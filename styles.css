@@ -645,20 +645,54 @@ a:hover {
     color: var(--gold);
 }
 
-/* Thumbtack Badge - Discrete with logo */
-.thumbtack-badge {
+/* Social & Reviews Badges */
+.social-badges {
     display: flex;
     justify-content: center;
+    align-items: center;
+    gap: var(--space-lg);
     padding: var(--space-md) 0;
+    flex-wrap: wrap;
 }
 
-.thumbtack-link {
+.social-link {
     display: flex;
     align-items: center;
     gap: var(--space-sm);
     text-decoration: none;
     transition: all var(--transition);
     opacity: 0.9;
+}
+
+.social-link:hover {
+    opacity: 1;
+}
+
+.instagram-link {
+    color: #E4405F;
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.instagram-link:hover {
+    color: #E4405F;
+}
+
+.instagram-icon {
+    width: 24px;
+    height: 24px;
+}
+
+.social-divider {
+    width: 1px;
+    height: 32px;
+    background: rgba(255,255,255,0.2);
+}
+
+.thumbtack-link {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
 }
 
 .thumbtack-link:hover {
@@ -828,6 +862,16 @@ a:hover {
         display: flex;
         flex-direction: column;
         align-items: center;
+    }
+
+    .social-badges {
+        flex-direction: column;
+        gap: var(--space-md);
+    }
+
+    .social-divider {
+        width: 60px;
+        height: 1px;
     }
 
     .thumbtack-link {
