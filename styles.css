@@ -71,7 +71,7 @@ h1, h2, h3, h4, h5, h6 {
     color: var(--navy);
 }
 
-h1 { font-size: clamp(2rem, 5vw, 3.5rem); white-space: nowrap; }
+h1 { font-size: clamp(2rem, 5vw, 3.5rem); }
 h2 { font-size: 2.5rem; }
 h3 { font-size: 1.5rem; }
 h4 { font-size: 1.25rem; }
@@ -841,7 +841,18 @@ a:hover {
 }
 
 @media (max-width: 480px) {
-    h1 { font-size: 1.75rem; }
+    h1 {
+        font-size: 1.75rem;
+        text-align: center;
+    }
+
+    .hero-content {
+        padding: 0 var(--space-sm);
+    }
+
+    .hero-subtitle {
+        font-size: 1rem;
+    }
 
     .btn-large {
         padding: 14px 32px;
