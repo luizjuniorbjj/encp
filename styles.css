@@ -648,17 +648,19 @@ a:hover {
 /* Social & Reviews Badges */
 .social-badges {
     display: flex;
+    flex-direction: row;
     justify-content: center;
     align-items: center;
     gap: var(--space-lg);
-    padding: var(--space-md) 0;
-    flex-wrap: wrap;
+    padding: var(--space-lg) 0;
+    margin-top: var(--space-md);
+    border-top: 1px solid rgba(255,255,255,0.1);
 }
 
 .social-link {
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: var(--space-sm);
+    gap: 8px;
     text-decoration: none;
     transition: all var(--transition);
     opacity: 0.9;
@@ -679,20 +681,22 @@ a:hover {
 }
 
 .instagram-icon {
-    width: 24px;
-    height: 24px;
+    width: 22px;
+    height: 22px;
+    flex-shrink: 0;
 }
 
 .social-divider {
     width: 1px;
-    height: 32px;
-    background: rgba(255,255,255,0.2);
+    height: 28px;
+    background: rgba(255,255,255,0.25);
+    flex-shrink: 0;
 }
 
 .thumbtack-link {
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: var(--space-sm);
+    gap: 8px;
 }
 
 .thumbtack-link:hover {
