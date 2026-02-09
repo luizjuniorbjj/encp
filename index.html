@@ -105,6 +105,66 @@
         ]
     }
     </script>
+
+    <!-- Structured Data - Website with SearchAction -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "ENCP Services Group",
+        "url": "https://encpservices.com",
+        "potentialAction": {
+            "@type": "SearchAction",
+            "target": "https://encpservices.com/?s={search_term_string}",
+            "query-input": "required name=search_term_string"
+        }
+    }
+    </script>
+
+    <!-- Structured Data - Site Navigation -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "ItemList",
+        "itemListElement": [
+            {
+                "@type": "SiteNavigationElement",
+                "position": 1,
+                "name": "Services",
+                "description": "Floor & Tile Installation, Bathroom Remodel, Kitchen Remodel",
+                "url": "https://encpservices.com/#services"
+            },
+            {
+                "@type": "SiteNavigationElement",
+                "position": 2,
+                "name": "About Us",
+                "description": "16 years experience, licensed and background checked",
+                "url": "https://encpservices.com/#about"
+            },
+            {
+                "@type": "SiteNavigationElement",
+                "position": 3,
+                "name": "Portfolio",
+                "description": "View our completed projects and transformations",
+                "url": "https://encpservices.com/#portfolio"
+            },
+            {
+                "@type": "SiteNavigationElement",
+                "position": 4,
+                "name": "Reviews",
+                "description": "100% 5-star reviews from happy customers",
+                "url": "https://encpservices.com/#reviews"
+            },
+            {
+                "@type": "SiteNavigationElement",
+                "position": 5,
+                "name": "Contact",
+                "description": "Get your free estimate - Call (561) 506-7035",
+                "url": "https://encpservices.com/#contact"
+            }
+        ]
+    }
+    </script>
 </head>
 <body>
     <!-- HEADER -->
