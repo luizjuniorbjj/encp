@@ -43,23 +43,25 @@ async def lifespan(app: FastAPI):
     print("=" * 40)
     print("[CRYPTO] Encryption key configured via environment")
 
-    await init_db()
-    print("[DB] Database connected")
+    try:
+        await init_db()
+        print("[DB] Database connected")
+    except Exception as e:
+        print(f"[WARN] Database not available: {e}")
+        print("[WARN] Running without database - some features disabled")
 
     if MAINTENANCE_MODE:
         print("[WARN] MAINTENANCE MODE ACTIVE")
     print("[OK] API ready")
     print("=" * 40)
-    print(f"  http://localhost:8004")
-    print(f"  http://localhost:8004/docs")
-    if DEBUG:
-        print(f"  Admin: http://localhost:8004{ADMIN_PANEL_PATH}")
-    print()
 
     yield
 
     # Shutdown
-    await close_db()
+    try:
+        await close_db()
+    except Exception:
+        pass
     print(f"\n[SHUTDOWN] {APP_NAME} stopped\n")
 
 
