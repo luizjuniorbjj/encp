@@ -155,7 +155,11 @@ class MarketingService:
         if not GSC_CREDENTIALS_JSON:
             return {"error": "GSC credentials not configured", "checked": 0}
 
-        service = await asyncio.to_thread(self._get_gsc_service)
+        try:
+            service = await asyncio.to_thread(self._get_gsc_service)
+        except Exception as e:
+            logger.error(f"[SEO] GSC auth failed: {e}")
+            return {"error": f"GSC auth failed: {str(e)}", "checked": 0}
 
         # Query last 28 days, grouped by query
         end_date = date.today()

@@ -104,8 +104,11 @@ async def sync_gsc(
 ):
     """Sync SEO data from Google Search Console API."""
     svc = MarketingService(db)
-    results = await svc.sync_from_gsc()
-    return results
+    try:
+        results = await svc.sync_from_gsc()
+        return results
+    except Exception as e:
+        return {"error": f"GSC sync failed: {str(e)}", "checked": 0}
 
 
 @router.get("/seo/dashboard")
