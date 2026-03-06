@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#1B365D">
+    <title>{{TITLE}} | ENCP Services Blog</title>
+    <meta name="description" content="{{META_DESCRIPTION}}">
+    <link rel="canonical" href="{{CANONICAL_URL}}">
+    <meta property="og:type" content="article">
+    <meta property="og:title" content="{{TITLE}}">
+    <meta property="og:description" content="{{META_DESCRIPTION}}">
+    <meta property="og:url" content="{{CANONICAL_URL}}">
+    <meta property="og:site_name" content="ENCP Services Group">
+    <meta property="og:image" content="https://encpservices.com/assets/logo/encp-og-image.png">
+    <meta property="article:published_time" content="{{PUBLISHED_AT}}">
+    <meta property="article:section" content="{{CATEGORY}}">
+    <link rel="icon" type="image/png" href="/assets/logo/favicon-32.png">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+    <script type="application/ld+json">
+    {{JSON_LD}}
+    </script>
+    <style>
+        :root { --navy: #1B365D; --navy-dark: #0F2440; --gold: #D4A84B; --white: #FFFFFF; --light-gray: #F5F5F5; --dark-gray: #333; --text-secondary: #666; --font-heading: 'Montserrat', sans-serif; --font-body: 'Open Sans', sans-serif; --shadow-sm: 0 2px 8px rgba(0,0,0,0.08); --shadow-md: 0 4px 16px rgba(0,0,0,0.12); --transition: 200ms ease; }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: var(--font-body); color: var(--dark-gray); line-height: 1.7; background: var(--white); }
+        a { color: var(--navy); text-decoration: none; transition: color var(--transition); }
+        a:hover { color: var(--gold); }
+        h1,h2,h3,h4 { font-family: var(--font-heading); color: var(--navy); }
+        .header { position: fixed; top: 0; left: 0; right: 0; z-index: 1000; background: var(--white); box-shadow: var(--shadow-sm); }
+        .header-content { display: flex; align-items: center; justify-content: space-between; padding: 8px 24px; max-width: 1200px; margin: 0 auto; }
+        .logo img { height: 70px; width: auto; }
+        .nav { display: flex; gap: 24px; }
+        .nav a { font-family: var(--font-heading); font-weight: 600; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; }
+        .btn { display: inline-block; padding: 10px 24px; font-family: var(--font-heading); font-weight: 600; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; border-radius: 8px; }
+        .btn-primary { background: var(--navy); color: var(--white); }
+        .btn-primary:hover { background: var(--gold); color: var(--navy); }
+        .mobile-menu-btn { display: none; flex-direction: column; gap: 5px; background: none; border: none; cursor: pointer; padding: 5px; }
+        .mobile-menu-btn span { display: block; width: 25px; height: 3px; background: var(--navy); }
+        .article-hero { background: linear-gradient(135deg, var(--navy) 0%, #2a5a8c 100%); color: white; padding: 140px 20px 60px; text-align: center; }
+        .article-hero h1 { color: white; font-size: clamp(1.6rem, 4vw, 2.4rem); max-width: 800px; margin: 0 auto 15px; line-height: 1.3; }
+        .article-meta { display: flex; justify-content: center; gap: 20px; opacity: 0.85; font-size: 0.95rem; flex-wrap: wrap; }
+        .article-meta .category-badge { background: var(--gold); color: var(--navy); font-weight: 700; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; padding: 3px 12px; border-radius: 4px; }
+        .article-container { max-width: 800px; margin: 0 auto; padding: 40px 24px 60px; }
+        .article-content h2 { font-size: 1.5rem; margin: 35px 0 15px; padding-bottom: 8px; border-bottom: 2px solid var(--gold); }
+        .article-content h3 { font-size: 1.2rem; margin: 25px 0 10px; }
+        .article-content p { margin-bottom: 16px; color: var(--dark-gray); }
+        .article-content ul, .article-content ol { margin: 15px 0; padding-left: 30px; }
+        .article-content li { margin-bottom: 8px; }
+        .article-content strong { color: var(--navy); }
+        .article-content a { color: var(--gold); font-weight: 600; }
+        .cta-box { background: linear-gradient(135deg, var(--navy) 0%, #2a5a8c 100%); color: white; padding: 35px; border-radius: 12px; text-align: center; margin: 40px 0; }
+        .cta-box h3 { color: white; font-size: 1.3rem; margin-bottom: 10px; }
+        .cta-box p { opacity: 0.9; margin-bottom: 20px; }
+        .cta-box .btn { background: var(--gold); color: var(--navy); font-size: 1rem; padding: 14px 32px; }
+        .cta-box .btn:hover { background: var(--white); }
+        .article-tags { display: flex; gap: 8px; flex-wrap: wrap; margin: 30px 0; padding-top: 20px; border-top: 1px solid #eee; }
+        .article-tags .tag { background: var(--light-gray); color: var(--text-secondary); font-size: 0.8rem; padding: 4px 12px; border-radius: 20px; font-family: var(--font-heading); }
+        .back-link { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-heading); font-weight: 600; font-size: 0.9rem; color: var(--gold); margin-bottom: 20px; }
+        .back-link:hover { color: var(--navy); }
+        .footer { background: var(--navy-dark); color: rgba(255,255,255,0.6); text-align: center; padding: 30px; }
+        .footer a { color: var(--gold); }
+        @media (max-width: 768px) {
+            .nav { display: none; }
+            .mobile-menu-btn { display: flex; }
+            .header-content .btn { display: none; }
+            .article-hero { padding: 120px 15px 40px; }
+            .article-container { padding: 25px 16px 40px; }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <a href="/" class="logo"><img src="/assets/logo/encp-logo-horizontal.png" alt="ENCP Services Group"></a>
+            <nav class="nav">
+                <a href="/">Home</a>
+                <a href="/blog/" style="color:var(--gold)">Blog</a>
+                <a href="/#services">Services</a>
+                <a href="/#contact">Contact</a>
+            </nav>
+            <a href="tel:+15615067035" class="btn btn-primary">Call (561) 506-7035</a>
+            <button class="mobile-menu-btn" aria-label="Menu"><span></span><span></span><span></span></button>
+        </div>
+    </header>
+
+    <section class="article-hero">
+        <div class="article-meta">
+            <span class="category-badge">{{CATEGORY}}</span>
+            <span>{{DATE}}</span>
+            {{CITY_SPAN}}
+            <span>{{VIEWS}} views</span>
+        </div>
+        <h1>{{TITLE}}</h1>
+    </section>
+
+    <div class="article-container">
+        <a href="/blog/" class="back-link">&larr; Back to Blog</a>
+        <article class="article-content">
+            {{CONTENT}}
+        </article>
+        <div class="article-tags">
+            {{TAGS_HTML}}
+        </div>
+        <div class="cta-box">
+            <h3>Ready to Transform Your Space?</h3>
+            <p>Get a free estimate from Boca Raton's trusted tile and remodeling contractor. 16+ years experience, 100% 5-star reviews.</p>
+            <a href="tel:+15615067035" class="btn">Call (561) 506-7035</a>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <p>&copy; 2026 ENCP Services Group | <a href="/">Home</a> | <a href="/blog/">Blog</a> | <a href="tel:+15615067035">(561) 506-7035</a></p>
+    </footer>
+
+    <script>
+    document.querySelector('.mobile-menu-btn').addEventListener('click', function() {
+        const nav = document.querySelector('.nav');
+        nav.style.display = nav.style.display === 'flex' ? 'none' : 'flex';
+        nav.style.flexDirection = 'column'; nav.style.position = 'absolute'; nav.style.top = '100%';
+        nav.style.left = '0'; nav.style.right = '0'; nav.style.background = 'white';
+        nav.style.padding = '20px'; nav.style.boxShadow = '0 4px 16px rgba(0,0,0,0.12)';
+    });
+    </script>
+</body>
+</html>

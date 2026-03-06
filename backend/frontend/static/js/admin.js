@@ -110,6 +110,7 @@ const Admin = {
             case 'projects': this.loadProjects(); break;
             case 'conversations': this.loadConversations(); break;
             case 'marketing': this.loadMarketing(); break;
+            case 'blog': this.loadBlog(); break;
         }
     },
 
@@ -571,13 +572,13 @@ const Admin = {
         // Close modal buttons
         document.querySelectorAll('.modal-close, .modal-cancel').forEach((btn) => {
             btn.addEventListener('click', () => {
-                const modal = btn.closest('.modal');
+                const modal = btn.closest('.modal-overlay');
                 if (modal) this.hideModal(modal.id);
             });
         });
 
         // Close modal on backdrop click
-        document.querySelectorAll('.modal').forEach((modal) => {
+        document.querySelectorAll('.modal-overlay').forEach((modal) => {
             modal.addEventListener('click', (e) => {
                 if (e.target === modal) this.hideModal(modal.id);
             });
@@ -1093,6 +1094,219 @@ const Admin = {
         const stages = ['scheduled', 'prep', 'in_progress', 'installation', 'grouting', 'inspection', 'completed'];
         const idx = stages.indexOf(stage || 'scheduled');
         return idx >= 0 ? Math.round(((idx + 1) / stages.length) * 100) : 0;
+    },
+
+    // ─── Blog AI ─────────────────────────────────────────────────────
+
+    async loadBlog() {
+        this._blogBindEvents();
+        await this._blogLoadSchedule();
+        await this._blogLoadPosts();
+    },
+
+    _blogBound: false,
+    _blogBindEvents() {
+        if (this._blogBound) return;
+        this._blogBound = true;
+
+        document.getElementById('btn-generate-post')?.addEventListener('click', () => this._blogGenerate(false));
+        document.getElementById('btn-generate-batch')?.addEventListener('click', () => this._blogGenerate(true));
+        document.getElementById('btn-load-topics')?.addEventListener('click', () => this._blogLoadTopics());
+        document.getElementById('blog-filter-status')?.addEventListener('change', () => this._blogLoadPosts());
+        document.getElementById('btn-save-schedule')?.addEventListener('click', () => this._blogSaveSchedule());
+    },
+
+    _blogUpdateToggleVisual(enabled) {
+        const box = document.getElementById('schedule-toggle-box');
+        const label = document.getElementById('schedule-on-off');
+        if (box) {
+            box.style.borderColor = enabled ? '#27ae60' : '#ccc';
+            box.style.background = enabled ? '#f0faf3' : 'transparent';
+        }
+        if (label) {
+            label.textContent = enabled ? 'ON' : 'OFF';
+            label.style.color = enabled ? '#27ae60' : '#999';
+        }
+    },
+
+    async _blogLoadSchedule() {
+        try {
+            const s = await API.get('/blog/admin/schedule');
+            const chk1 = document.getElementById('schedule-enabled');
+            const chk2 = document.getElementById('schedule-enabled-inline');
+            if (chk1) chk1.checked = s.enabled;
+            if (chk2) chk2.checked = s.enabled;
+            document.getElementById('schedule-posts-per-day').value = s.posts_per_day || 2;
+            document.getElementById('schedule-hour').value = s.publish_hour || 8;
+            document.getElementById('schedule-auto-publish').checked = s.auto_publish !== false;
+            this._blogUpdateToggleVisual(s.enabled);
+            const statusText = document.getElementById('schedule-status-text');
+            if (s.enabled) {
+                statusText.textContent = `${s.posts_per_day} posts/day at ${s.publish_hour}:00 UTC`;
+                statusText.style.color = '#27ae60';
+            } else {
+                statusText.textContent = 'Disabled';
+                statusText.style.color = 'var(--text-muted)';
+            }
+            if (s.last_run_at) {
+                const lastRun = new Date(s.last_run_at);
+                statusText.textContent += ` • Last: ${lastRun.toLocaleDateString()} (${s.posts_generated_today} posts)`;
+            }
+        } catch(e) { console.error('Schedule load error:', e); }
+    },
+
+    async _blogSaveSchedule() {
+        const statusEl = document.getElementById('schedule-save-status');
+        const inlineChk = document.getElementById('schedule-enabled-inline');
+        const headerChk = document.getElementById('schedule-enabled');
+        const enabled = inlineChk ? inlineChk.checked : (headerChk ? headerChk.checked : false);
+        try {
+            const data = {
+                enabled: enabled,
+                posts_per_day: parseInt(document.getElementById('schedule-posts-per-day').value),
+                publish_hour: parseInt(document.getElementById('schedule-hour').value),
+                auto_publish: document.getElementById('schedule-auto-publish').checked,
+            };
+            await API.patch('/blog/admin/schedule', data);
+            statusEl.textContent = enabled ? 'Saved! Scheduler ON' : 'Saved! Scheduler OFF';
+            statusEl.style.color = '#27ae60';
+            await this._blogLoadSchedule();
+            setTimeout(() => { statusEl.textContent = ''; }, 4000);
+        } catch(e) {
+            statusEl.textContent = 'Error: ' + (e.message || 'Failed');
+            statusEl.style.color = '#e74c3c';
+        }
+    },
+
+    async _blogLoadPosts() {
+        const status = document.getElementById('blog-filter-status')?.value || '';
+        try {
+            const url = status ? `/blog/admin/posts?status=${status}` : '/blog/admin/posts';
+            const data = await API.get(url);
+            if (data.stats) {
+                document.getElementById('blog-total').textContent = data.stats.total || 0;
+                document.getElementById('blog-published').textContent = data.stats.published || 0;
+                document.getElementById('blog-drafts').textContent = data.stats.drafts || 0;
+                document.getElementById('blog-views').textContent = data.stats.total_views || 0;
+            }
+            const tbody = document.getElementById('blog-posts-body');
+            if (!data.posts?.length) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:2rem;" class="text-muted">No posts yet. Generate your first post!</td></tr>';
+                return;
+            }
+            tbody.innerHTML = data.posts.map(p => `
+                <tr>
+                    <td><a href="/blog/${p.slug}/" target="_blank" style="font-weight:600;">${this._escapeHtml(p.title)}</a></td>
+                    <td>${p.category || '-'}</td>
+                    <td>${p.city || '-'}</td>
+                    <td><span class="status-badge status-${p.status}">${p.status}</span></td>
+                    <td>${p.views || 0}</td>
+                    <td>${p.created_at ? new Date(p.created_at).toLocaleDateString() : '-'}</td>
+                    <td style="white-space:nowrap;">
+                        <button class="btn btn-sm btn-outline" onclick="Admin._blogPreview('${p.slug}')">Preview</button>
+                        ${p.status === 'draft' ? `<button class="btn btn-sm btn-primary" onclick="Admin._blogPublish('${p.id}')">Publish</button>` : ''}
+                        ${p.status === 'published' ? `<button class="btn btn-sm btn-outline" onclick="Admin._blogArchive('${p.id}')">Archive</button>` : ''}
+                        <button class="btn btn-sm" style="color:#e74c3c;" onclick="Admin._blogDelete('${p.id}')">Delete</button>
+                    </td>
+                </tr>
+            `).join('');
+        } catch(e) {
+            console.error('Blog load error:', e);
+        }
+    },
+
+    async _blogGenerate(batch) {
+        const statusEl = document.getElementById('blog-gen-status');
+        const topic = document.getElementById('blog-topic')?.value?.trim() || null;
+        const city = document.getElementById('blog-city')?.value?.trim() || null;
+        const service = document.getElementById('blog-service')?.value || null;
+        const keywords = document.getElementById('blog-keywords')?.value?.trim() || null;
+        const autoPublish = document.getElementById('blog-auto-publish')?.checked || false;
+
+        statusEl.textContent = batch ? 'Generating 5 posts... (this may take a minute)' : 'Generating post...';
+        statusEl.style.color = 'var(--deep-blue)';
+
+        try {
+            let data;
+            if (batch) {
+                data = await API.post('/blog/admin/generate-batch', { count: 5, auto_publish: autoPublish });
+                statusEl.textContent = `Done! Generated ${data.generated} posts. ${data.errors ? data.errors + ' errors.' : ''}`;
+            } else {
+                data = await API.post('/blog/admin/generate', { topic, city, service, keywords, auto_publish: autoPublish });
+                statusEl.textContent = `Created: "${data.title}" (${data.cost_estimate})`;
+            }
+            statusEl.style.color = '#27ae60';
+            document.getElementById('blog-topic').value = '';
+            await this._blogLoadPosts();
+        } catch(e) {
+            statusEl.textContent = 'Error: ' + (e.message || 'Generation failed');
+            statusEl.style.color = '#e74c3c';
+        }
+    },
+
+    async _blogPublish(id) {
+        try {
+            await API.patch(`/blog/admin/posts/${id}`, { status: 'published' });
+            await this._blogLoadPosts();
+        } catch(e) { alert('Error publishing: ' + e.message); }
+    },
+
+    async _blogArchive(id) {
+        try {
+            await API.patch(`/blog/admin/posts/${id}`, { status: 'archived' });
+            await this._blogLoadPosts();
+        } catch(e) { alert('Error archiving: ' + e.message); }
+    },
+
+    async _blogDelete(id) {
+        if (!confirm('Delete this post permanently?')) return;
+        try {
+            await API.delete(`/blog/admin/posts/${id}`);
+            await this._blogLoadPosts();
+        } catch(e) { alert('Error deleting: ' + e.message); }
+    },
+
+    async _blogPreview(slug) {
+        const modal = document.getElementById('modal-blog-preview');
+        const body = document.getElementById('blog-preview-body');
+        if (!modal || !body) return;
+        body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted);">Loading preview...</div>';
+        modal.style.display = 'flex';
+        try {
+            const post = await API.get(`/blog/posts/${slug}`);
+            body.innerHTML = `
+                <div style="margin-bottom:16px;">
+                    <span class="status-badge status-${post.status}" style="margin-right:8px;">${post.status}</span>
+                    <span style="color:var(--text-muted);font-size:0.85rem;">${post.category || ''} ${post.city ? '• ' + post.city : ''} • ${post.views || 0} views</span>
+                </div>
+                <h2 style="margin-bottom:8px;font-size:1.4rem;">${this._escapeHtml(post.title)}</h2>
+                <p style="color:var(--text-muted);font-size:0.9rem;margin-bottom:16px;font-style:italic;">${this._escapeHtml(post.meta_description || '')}</p>
+                <div style="border-top:1px solid var(--border);padding-top:16px;line-height:1.8;font-size:0.95rem;">
+                    ${post.content}
+                </div>
+                ${post.tags?.length ? '<div style="margin-top:16px;display:flex;gap:6px;flex-wrap:wrap;">' + post.tags.map(t => '<span style="background:var(--bg-secondary);padding:2px 10px;border-radius:12px;font-size:0.8rem;">' + this._escapeHtml(t) + '</span>').join('') + '</div>' : ''}
+                <div style="margin-top:20px;display:flex;gap:8px;">
+                    <a href="/blog/${slug}/" target="_blank" class="btn btn-sm btn-primary">Open Full Page</a>
+                </div>`;
+        } catch(e) {
+            body.innerHTML = '<p style="color:#e74c3c;">Error loading preview: ' + (e.message || 'Unknown error') + '</p>';
+        }
+    },
+
+    async _blogLoadTopics() {
+        const el = document.getElementById('blog-topics-list');
+        try {
+            const data = await API.get('/blog/admin/topics');
+            if (!data.topics?.length) {
+                el.innerHTML = '<p>All pre-defined topics have been used! Enter custom topics above.</p>';
+                return;
+            }
+            el.innerHTML = `<p style="margin-bottom:0.5rem;font-weight:600;">${data.available} topics available:</p>` +
+                data.topics.map(t => `<div style="padding:6px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+                    <span>${t.topic} ${t.city ? '<em style="color:var(--bright-yellow);">(' + t.city + ')</em>' : ''}</span>
+                    <button class="btn btn-sm btn-outline" onclick="document.getElementById('blog-topic').value='${t.topic.replace(/'/g,"\\'")}';document.getElementById('blog-city').value='${t.city||''}';document.getElementById('blog-keywords').value='${(t.keywords||'').replace(/'/g,"\\'")}';this.textContent='Selected';">Use</button>
+                </div>`).join('');
+        } catch(e) { el.innerHTML = '<p style="color:#e74c3c;">Error loading topics</p>'; }
     }
 };
 

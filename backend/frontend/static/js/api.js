@@ -18,6 +18,11 @@ const API = {
         localStorage.removeItem('encp_refresh');
     },
 
+    get(path) { return this.request('GET', path); },
+    post(path, body) { return this.request('POST', path, body); },
+    patch(path, body) { return this.request('PATCH', path, body); },
+    delete(path) { return this.request('DELETE', path); },
+
     async request(method, path, body = null, options = {}) {
         const headers = { 'Content-Type': 'application/json' };
         if (this.token) headers['Authorization'] = `Bearer ${this.token}`;
