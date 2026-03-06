@@ -21,6 +21,8 @@ nul
 .env
 *.env
 backend/.env
+*.json.bak
+encp-services-*.json
 
 # Python
 __pycache__/

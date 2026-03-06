@@ -29,6 +29,7 @@ from app.routes.webhook import router as webhook_router
 from app.routes.voice import router as voice_router
 from app.routes.export import router as export_router
 from app.routes.marketing import router as marketing_router
+from app.routes.blog import router as blog_router
 
 
 # ============================================
@@ -158,6 +159,7 @@ app.include_router(webhook_router)
 app.include_router(voice_router)
 app.include_router(export_router)
 app.include_router(marketing_router)
+app.include_router(blog_router)
 
 
 # ============================================
