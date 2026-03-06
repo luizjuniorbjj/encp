@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: encp-db
+    environment:
+      POSTGRES_USER: encp
+      POSTGRES_PASSWORD: encp_dev_2026
+      POSTGRES_DB: enpcservices
+    ports:
+      - "25436:5432"
+    volumes:
+      - encp_pgdata:/var/lib/postgresql/data
+      - ../database/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U encp -d enpcservices"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: encp-api
+    ports:
+      - "8004:8000"
+    environment:
+      DATABASE_URL: postgresql://encp:encp_dev_2026@postgres:5432/enpcservices
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      SECRET_KEY: ${SECRET_KEY:-encp-dev-key-change-in-prod}
+      EVOLUTION_API_URL: http://evolution:8080
+      EVOLUTION_API_KEY: ${EVOLUTION_API_KEY:-encp_evo_key_2026}
+      DEBUG: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ../app:/app/app
+      - ../frontend:/app/frontend
+
+  evolution:
+    image: atendai/evolution-api:v2.1.1
+    container_name: encp-evolution
+    ports:
+      - "8088:8080"
+    environment:
+      AUTHENTICATION_API_KEY: ${EVOLUTION_API_KEY:-encp_evo_key_2026}
+      DATABASE_ENABLED: "false"
+    volumes:
+      - encp_evolution:/evolution/instances
+
+volumes:
+  encp_pgdata:
+  encp_evolution:
