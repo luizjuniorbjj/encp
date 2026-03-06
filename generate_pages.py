@@ -1,4 +1,20 @@
+"""
+ENCP Services Group - SEO Landing Page Generator
+3 services x 8 cities = 24 pages with UNIQUE AI-generated content per page
+Uses GPT-4o-mini to generate city-specific body content, cached in content_cache.json
+"""
+
 import os
+import json
+import asyncio
+from openai import AsyncOpenAI
+from dotenv import load_dotenv
+
+load_dotenv(os.path.join(os.path.dirname(__file__), 'backend', '.env'))
+
+client = AsyncOpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+
+CACHE_FILE = 'content_cache.json'
 
 cities = ['Boca Raton', 'Delray Beach', 'Fort Lauderdale', 'Pompano Beach', 'Coral Springs', 'Coconut Creek', 'Weston', 'Deerfield Beach']
 
@@ -8,6 +24,109 @@ services = {
     'Kitchen Remodel': 'Kitchen remodeling services in {city}, FL. Backsplash, floor tile, countertops, and complete kitchen renovations. Licensed and insured.',
 }
 
+images = {
+    'Tile Installation': ('bathroom-01-luxury-final.jpeg', 'shower-03-marble-final.jpeg', 'floor-01-installation-progress.jpeg'),
+    'Bathroom Remodel': ('bathroom-03-modern-final.jpeg', 'bathroom-02-luxury-angle.jpeg', 'shower-03-marble-final.jpeg'),
+    'Kitchen Remodel': ('bathroom-01-luxury-final.jpeg', 'shower-02-tile-progress.jpeg', 'floor-01-installation-progress.jpeg'),
+}
+
+# ============================================
+# AI Content Generation
+# ============================================
+
+CONTENT_PROMPT = """Generate UNIQUE landing page body content for a tile/flooring/remodel contractor's service page.
+
+Company: ENCP Services Group (owners Eusebio and Tulio, 16+ years experience, 5.0 stars on Thumbtack, licensed & insured)
+Service: {service}
+City: {city}, FL
+
+Write 3 sections of HTML content. Each section has an H2 and 2 paragraphs. DO NOT repeat generic company info — focus on LOCAL, SPECIFIC content.
+
+Section 1 - "{service} Services in {city}" — Talk about:
+- 2-3 REAL neighborhoods/communities/developments in {city} where this service is common
+- Specific local challenges (Florida humidity, mold in bathrooms, older tile cracking, new construction needs)
+- What types of properties in {city} typically need this service
+
+Section 2 - "What {city} Homeowners Should Know About {service}" — Include:
+- A specific price range typical for {city} market (be realistic for South Florida 2026)
+- How long the job typically takes
+- Best materials for South Florida climate (porcelain vs ceramic, waterproofing needs)
+- One common mistake homeowners in this area make
+
+Section 3 - "Trusted {service} Experts in {city}" — Cover:
+- Why hiring a local South Florida contractor with tile/remodel expertise matters
+- One specific Florida building code or regulation relevant to this service (waterproofing, permits)
+- A real-world scenario/problem solved in the {city} area (humidity damage, old tile removal, etc.)
+
+RULES:
+- Use <h2> and <p> tags only (no <h1>, no <div>, no <section>)
+- Make every sentence DIFFERENT from what you'd write for any other city
+- Be specific — mention real neighborhood names, real local context
+- 250-350 words total
+- Professional but approachable tone (like Eusebio talking to a neighbor)
+- Do NOT mention company name, phone, ratings, or insurance — those are elsewhere on the page
+- Do NOT use: "In conclusion", "Look no further", "In today's world"
+
+Return ONLY the raw HTML (h2 and p tags). No JSON wrapper, no markdown."""
+
+
+async def generate_content(service: str, city: str) -> str:
+    """Generate unique content for a service+city page via GPT-4o-mini"""
+    prompt = CONTENT_PROMPT.format(service=service, city=city)
+    response = await client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.85,
+        max_tokens=800,
+    )
+    return response.choices[0].message.content.strip()
+
+
+async def generate_all_content(pages_list):
+    """Generate content for all pages, using cache to skip already-generated ones"""
+    cache = {}
+    if os.path.exists(CACHE_FILE):
+        with open(CACHE_FILE, 'r', encoding='utf-8') as f:
+            cache = json.load(f)
+
+    to_generate = []
+    for slug, service, city, desc in pages_list:
+        if slug not in cache:
+            to_generate.append((slug, service, city))
+
+    if not to_generate:
+        print(f"[CACHE] All {len(pages_list)} pages already in cache.")
+        return cache
+
+    print(f"[AI] Generating unique content for {len(to_generate)} pages...")
+
+    # Process in batches of 10
+    batch_size = 10
+    for i in range(0, len(to_generate), batch_size):
+        batch = to_generate[i:i + batch_size]
+        tasks = [generate_content(svc, city) for slug, svc, city in batch]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        for j, (slug, service, city) in enumerate(batch):
+            result = results[j]
+            if isinstance(result, Exception):
+                print(f"  [ERR] {slug}: {result}")
+                cache[slug] = f'<h2>{service} Services in {city}</h2>\n<p>Professional {service.lower()} services available in {city}, FL.</p>'
+            else:
+                cache[slug] = result
+                print(f"  [OK] {slug}")
+
+        with open(CACHE_FILE, 'w', encoding='utf-8') as f:
+            json.dump(cache, f, indent=2, ensure_ascii=False)
+
+    print(f"[AI] Done! {len(to_generate)} pages generated.")
+    return cache
+
+
+# ============================================
+# Page list
+# ============================================
+
 pages = []
 for city in cities:
     city_slug = city.lower().replace(' ', '-')
@@ -16,6 +135,11 @@ for city in cities:
         slug = f'{service_slug}-{city_slug}'
         desc = desc_tmpl.format(city=city)
         pages.append((slug, service, city, desc))
+
+
+# ============================================
+# HTML Template
+# ============================================
 
 TEMPLATE = """<!DOCTYPE html>
 <html lang="en">
@@ -187,26 +311,15 @@ TEMPLATE = """<!DOCTYPE html>
         <a href="tel:+15615067035" class="btn btn-gold btn-large">Call For Free Estimate</a>
     </section>
 
+    <!-- CONTENT (AI-generated unique per city+service) -->
     <section class="service-content">
-        <h2>Expert {service} Services in {city}</h2>
-        <p>ENCP Services Group brings over <strong>16 years of experience</strong> to every {service_lower} project in {city} and throughout South Florida. Our team of skilled craftsmen delivers precision workmanship with attention to detail that sets us apart from other contractors.</p>
-        <p>Whether you need a complete {service_lower} for your home or a targeted update to refresh your space, we handle projects of all sizes with the same dedication to quality. From selecting the right materials to flawless installation, we guide you through every step of the process.</p>
+        {body_content}
 
         <div class="service-gallery">
             <img src="/assets/fotos/{img1}" alt="{service} project in {city} FL by ENCP Services" width="400" height="250" loading="lazy">
             <img src="/assets/fotos/{img2}" alt="Professional {service_lower} {city} Florida" width="400" height="250" loading="lazy">
             <img src="/assets/fotos/{img3}" alt="{service} work in progress {city} FL" width="400" height="250" loading="lazy">
         </div>
-
-        <h2>Why {city} Homeowners Choose ENCP Services</h2>
-        <p>With a <strong>perfect 5.0-star rating</strong> from over 20 verified reviews on Thumbtack, our reputation speaks for itself. We are licensed, insured, and committed to delivering exceptional results on every project in {city}.</p>
-        <p>Our clients trust us because we treat every home like our own. We show up on time, keep your space clean, and won't rest until you're completely satisfied with the results.</p>
-
-        <h2>Our {service} Process</h2>
-        <p><strong>1. Free Consultation</strong> &mdash; We visit your {city} property, assess the space, discuss your vision, and provide a detailed written estimate at no cost.</p>
-        <p><strong>2. Material Selection</strong> &mdash; We help you choose the perfect materials for your project, whether it's porcelain tile, natural stone, hardwood, or laminate.</p>
-        <p><strong>3. Professional Installation</strong> &mdash; Our experienced team completes the work efficiently and to the highest standards, with minimal disruption to your daily life.</p>
-        <p><strong>4. Final Inspection</strong> &mdash; We do a thorough walkthrough with you to ensure every detail meets your expectations before considering the job complete.</p>
     </section>
 
     <section class="lp-benefits">
@@ -300,32 +413,38 @@ TEMPLATE = """<!DOCTYPE html>
 </body>
 </html>"""
 
-images = {
-    'Tile Installation': ('bathroom-01-luxury-final.jpeg', 'shower-03-marble-final.jpeg', 'floor-01-installation-progress.jpeg'),
-    'Bathroom Remodel': ('bathroom-03-modern-final.jpeg', 'bathroom-02-luxury-angle.jpeg', 'shower-03-marble-final.jpeg'),
-    'Kitchen Remodel': ('bathroom-01-luxury-final.jpeg', 'shower-02-tile-progress.jpeg', 'floor-01-installation-progress.jpeg'),
-}
 
-for slug, service, city, desc in pages:
-    dir_path = f'c:/enpcservices/public/{slug}'
-    os.makedirs(dir_path, exist_ok=True)
+# ============================================
+# Build pages
+# ============================================
 
-    imgs = images.get(service, images['Tile Installation'])
+async def main():
+    content_cache = await generate_all_content(pages)
 
-    html = TEMPLATE.format(
-        service=service,
-        city=city,
-        desc=desc,
-        slug=slug,
-        service_lower=service.lower(),
-        img1=imgs[0],
-        img2=imgs[1],
-        img3=imgs[2],
-    )
+    for slug, service, city, desc in pages:
+        dir_path = f'c:/enpcservices/public/{slug}'
+        os.makedirs(dir_path, exist_ok=True)
 
-    with open(f'{dir_path}/index.html', 'w', encoding='utf-8') as f:
-        f.write(html)
+        imgs = images.get(service, images['Tile Installation'])
+        body_content = content_cache.get(slug, f'<h2>{service} in {city}</h2><p>Professional services available.</p>')
 
-    print(f'[OK] {slug}/index.html')
+        html = TEMPLATE.format(
+            service=service,
+            city=city,
+            desc=desc,
+            slug=slug,
+            service_lower=service.lower(),
+            img1=imgs[0],
+            img2=imgs[1],
+            img3=imgs[2],
+            body_content=body_content,
+        )
 
-print(f'\nTotal: {len(pages)} pages created')
+        with open(f'{dir_path}/index.html', 'w', encoding='utf-8') as f:
+            f.write(html)
+
+    print(f'\n[DONE] {len(pages)} pages created with unique AI content')
+
+
+if __name__ == '__main__':
+    asyncio.run(main())
