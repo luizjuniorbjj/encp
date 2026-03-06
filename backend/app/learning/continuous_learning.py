@@ -4,9 +4,12 @@ Engine that improves AI responses with each interaction
 Forked from AiSyster — adapted from spiritual to tile/remodel domain
 """
 
+import logging
 from typing import Dict, List, Optional
 from datetime import datetime
 from enum import Enum
+
+logger = logging.getLogger("encp.learning")
 
 
 # ============================================
@@ -382,7 +385,7 @@ class LearningEngine:
                 if row:
                     strategy = row["strategy_used"]
         except Exception as e:
-            print(f"[LEARNING] Error getting strategy: {e}")
+            logger.error("Error getting strategy: %s", e)
 
         await self.db.save_learning_feedback(
             user_id=user_id,
@@ -422,7 +425,7 @@ class LearningEngine:
                 """ % days, user_uuid)
                 return [dict(row) for row in rows]
         except Exception as e:
-            print(f"[LEARNING] Error getting interaction history: {e}")
+            logger.error("Error getting interaction history: %s", e)
             return []
 
 

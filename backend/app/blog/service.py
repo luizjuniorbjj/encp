@@ -4,13 +4,16 @@ Generates SEO-optimized blog posts for tile/floor/remodel contractor niche
 """
 
 import json
+import logging
 import re
 import uuid
 from datetime import datetime, timezone
-from openai import AsyncOpenAI
+from openai import AsyncOpenAI, OpenAIError
 
 from app.config import OPENAI_API_KEY
 from app.database import get_db
+
+logger = logging.getLogger("encp.blog")
 
 client = AsyncOpenAI(api_key=OPENAI_API_KEY)
 
@@ -95,10 +98,11 @@ _SERVICES = {
 }
 
 # Build city+service topics dynamically (24 articles)
+# Order: rotate by service first, so each batch covers different cities
 TOPIC_IDEAS = []
-for city in _CITIES:
-    city_lower = city.lower().replace(' ', '-')
-    for svc_name, svc_data in _SERVICES.items():
+for svc_name, svc_data in _SERVICES.items():
+    for city in _CITIES:
+        city_lower = city.lower().replace(' ', '-')
         TOPIC_IDEAS.append({
             "topic": svc_data['topic'].format(city=city),
             "city": city,
@@ -189,11 +193,14 @@ async def generate_blog_post(
     published_at = datetime.now(timezone.utc) if auto_publish else None
 
     db = await get_db()
+    # Ensure unique slug
+    existing = await db.fetchrow("SELECT 1 FROM blog_posts WHERE slug = $1", slug)
+    if existing:
+        slug = slug + '-' + uuid.uuid4().hex[:6]
+
     row = await db.fetchrow("""
         INSERT INTO blog_posts (slug, title, meta_description, content, excerpt, category, tags, city, service, status, ai_model, ai_prompt, published_at)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-        ON CONFLICT (slug) DO UPDATE SET
-            slug = blog_posts.slug || '-' || substr(gen_random_uuid()::text, 1, 4)
         RETURNING id, slug, title, status, created_at
     """,
         slug,
@@ -232,7 +239,8 @@ async def generate_batch(count: int = 5, auto_publish: bool = False) -> list:
                 results.append(result)
                 break
             results.append(result)
-        except Exception as e:
+        except (OpenAIError, json.JSONDecodeError, KeyError) as e:
+            logger.error("Blog generation error on post %d: %s", i + 1, e)
             results.append({"error": str(e), "post_number": i + 1})
     return results
 
@@ -318,6 +326,15 @@ async def get_stats() -> dict:
         FROM blog_posts
     """)
     return dict(stats)
+
+
+async def get_published_posts_for_sitemap() -> list:
+    """Get all published posts for sitemap generation"""
+    db = await get_db()
+    rows = await db.fetch(
+        "SELECT slug, updated_at, published_at FROM blog_posts WHERE status = 'published' ORDER BY published_at DESC"
+    )
+    return [dict(r) for r in rows]
 
 
 async def get_topic_suggestions() -> list:

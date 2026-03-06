@@ -5,18 +5,22 @@ Forked from SegurIA — adapted salt for ENCPServices data isolation
 """
 
 import hashlib
+import logging
 import secrets
 from datetime import datetime, timedelta
 from typing import Optional
 from base64 import b64encode
 
-from cryptography.fernet import Fernet
+logger = logging.getLogger("encp.security")
+
+import cryptography.fernet
+from cryptography.fernet import Fernet, InvalidToken
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 import bcrypt
 import jwt
 
-from app.config import SECRET_KEY, ENCRYPTION_KEY, JWT_ALGORITHM, JWT_ACCESS_TOKEN_HOURS, JWT_REFRESH_TOKEN_DAYS
+from app.config import SECRET_KEY, ENCRYPTION_KEY, JWT_ALGORITHM, JWT_ACCESS_TOKEN_HOURS, JWT_REFRESH_TOKEN_DAYS, REDIS_URL
 
 
 # ============================================
@@ -103,8 +107,8 @@ def decrypt_data(encrypted_data: bytes, user_id: str = "") -> str:
         fernet = Fernet(key)
         decrypted = fernet.decrypt(encrypted_data)
         return decrypted.decode('utf-8')
-    except Exception as e:
-        print(f"[DECRYPT_ERROR] Failed to decrypt for user {user_id[:8] if user_id else 'N/A'}...: {type(e).__name__}")
+    except (InvalidToken, ValueError, TypeError) as e:
+        logger.error("Failed to decrypt for user %s...: %s", user_id[:8] if user_id else "N/A", type(e).__name__)
         return "[Data could not be recovered]"
 
 
@@ -121,14 +125,79 @@ def hash_for_audit(data: str) -> str:
 
 
 # ============================================
-# RATE LIMITING
+# RATE LIMITING (Redis distributed + in-memory fallback)
 # ============================================
+
+_redis_client = None
+_redis_available = False
+
+
+def _init_redis():
+    """Initialize Redis connection (lazy, called on first use)"""
+    global _redis_client, _redis_available
+    if _redis_client is not None:
+        return
+    try:
+        if REDIS_URL:
+            import redis
+            _redis_client = redis.from_url(REDIS_URL, decode_responses=True)
+            _redis_client.ping()
+            _redis_available = True
+            logger.info("Redis connected for rate limiting")
+        else:
+            _redis_available = False
+            logger.info("REDIS_URL not set — using in-memory rate limiting")
+    except Exception as e:
+        _redis_available = False
+        logger.warning("Redis unavailable, falling back to in-memory: %s", e)
+
 
 class RateLimiter:
     def __init__(self):
-        self._requests = {}
+        self._requests = {}  # fallback in-memory
 
     def is_allowed(self, user_id: str, max_requests: int = 60, window_seconds: int = 60) -> bool:
+        _init_redis()
+        if _redis_available:
+            return self._redis_is_allowed(user_id, max_requests, window_seconds)
+        return self._memory_is_allowed(user_id, max_requests, window_seconds)
+
+    def get_remaining(self, user_id: str, max_requests: int = 60, window_seconds: int = 60) -> int:
+        _init_redis()
+        if _redis_available:
+            return self._redis_get_remaining(user_id, max_requests, window_seconds)
+        return self._memory_get_remaining(user_id, max_requests, window_seconds)
+
+    # --- Redis implementation (sliding window counter) ---
+
+    def _redis_is_allowed(self, user_id: str, max_requests: int, window_seconds: int) -> bool:
+        try:
+            key = f"rl:{user_id}:{window_seconds}"
+            current = _redis_client.get(key)
+            if current and int(current) >= max_requests:
+                return False
+            pipe = _redis_client.pipeline()
+            pipe.incr(key)
+            pipe.expire(key, window_seconds)
+            pipe.execute()
+            return True
+        except Exception as e:
+            logger.warning("Redis rate limit error, falling back: %s", e)
+            return self._memory_is_allowed(user_id, max_requests, window_seconds)
+
+    def _redis_get_remaining(self, user_id: str, max_requests: int, window_seconds: int) -> int:
+        try:
+            key = f"rl:{user_id}:{window_seconds}"
+            current = _redis_client.get(key)
+            used = int(current) if current else 0
+            return max(0, max_requests - used)
+        except Exception as e:
+            logger.warning("Redis remaining error, falling back: %s", e)
+            return self._memory_get_remaining(user_id, max_requests, window_seconds)
+
+    # --- In-memory fallback ---
+
+    def _memory_is_allowed(self, user_id: str, max_requests: int, window_seconds: int) -> bool:
         now = datetime.utcnow()
         window_start = now - timedelta(seconds=window_seconds)
 
@@ -146,7 +215,7 @@ class RateLimiter:
         self._requests[user_id].append(now)
         return True
 
-    def get_remaining(self, user_id: str, max_requests: int = 60, window_seconds: int = 60) -> int:
+    def _memory_get_remaining(self, user_id: str, max_requests: int, window_seconds: int) -> int:
         now = datetime.utcnow()
         window_start = now - timedelta(seconds=window_seconds)
 

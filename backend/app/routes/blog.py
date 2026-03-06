@@ -4,11 +4,15 @@ Blog API Routes
 - Admin: generate, edit, delete, manage posts
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+import logging
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from pydantic import BaseModel
 from typing import Optional
 from app.auth import get_admin_user
 from app.blog import service as blog_service
+from app.security import rate_limiter
+
+logger = logging.getLogger("encp.blog")
 
 router = APIRouter(prefix="/blog", tags=["blog"])
 
@@ -38,6 +42,12 @@ class UpdateRequest(BaseModel):
     tags: Optional[list] = None
     status: Optional[str] = None
     slug: Optional[str] = None
+
+class ScheduleRequest(BaseModel):
+    enabled: Optional[bool] = None
+    posts_per_day: Optional[int] = None
+    publish_hour: Optional[int] = None
+    auto_publish: Optional[bool] = None
 
 
 # ============================================
@@ -75,6 +85,8 @@ async def admin_list_posts(status: str = None, limit: int = 50, offset: int = 0,
 @router.post("/admin/generate")
 async def admin_generate_post(req: GenerateRequest, user=Depends(get_admin_user)):
     """Generate a single blog post using AI"""
+    if not rate_limiter.is_allowed(user["user_id"], max_requests=10, window_seconds=300):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded. Max 10 generations per 5 minutes.")
     result = await blog_service.generate_blog_post(
         topic=req.topic,
         city=req.city,
@@ -89,13 +101,31 @@ async def admin_generate_post(req: GenerateRequest, user=Depends(get_admin_user)
 
 
 @router.post("/admin/generate-batch")
-async def admin_generate_batch(req: BatchRequest, user=Depends(get_admin_user)):
-    """Generate multiple blog posts at once"""
-    results = await blog_service.generate_batch(count=req.count, auto_publish=req.auto_publish)
+async def admin_generate_batch(
+    req: BatchRequest,
+    background_tasks: BackgroundTasks,
+    user=Depends(get_admin_user)
+):
+    """Queue batch blog post generation as a background task"""
+    if not rate_limiter.is_allowed(user["user_id"], max_requests=3, window_seconds=600):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded. Max 3 batch generations per 10 minutes.")
+    if req.count > 10:
+        raise HTTPException(status_code=400, detail="Maximum 10 posts per batch")
+
+    async def _run_batch():
+        try:
+            results = await blog_service.generate_batch(count=req.count, auto_publish=req.auto_publish)
+            generated = len([r for r in results if "error" not in r])
+            errors = len([r for r in results if "error" in r])
+            logger.info("Batch complete: %d generated, %d errors", generated, errors)
+        except Exception as e:
+            logger.error("Batch generation failed: %s", e)
+
+    background_tasks.add_task(_run_batch)
     return {
-        "generated": len([r for r in results if "error" not in r]),
-        "errors": len([r for r in results if "error" in r]),
-        "results": results,
+        "status": "queued",
+        "count": req.count,
+        "message": f"Generating {req.count} posts in background. Check /blog/admin/stats for progress."
     }
 
 
@@ -129,3 +159,18 @@ async def admin_topic_suggestions(user=Depends(get_admin_user)):
 async def admin_blog_stats(user=Depends(get_admin_user)):
     """Blog statistics"""
     return await blog_service.get_stats()
+
+
+@router.get("/admin/schedule")
+async def admin_get_schedule(user=Depends(get_admin_user)):
+    """Get blog schedule config"""
+    from app.blog.scheduler import get_schedule
+    return await get_schedule()
+
+
+@router.patch("/admin/schedule")
+async def admin_update_schedule(req: ScheduleRequest, user=Depends(get_admin_user)):
+    """Update blog schedule config"""
+    from app.blog.scheduler import update_schedule
+    updates = {k: v for k, v in req.dict().items() if v is not None}
+    return await update_schedule(updates)

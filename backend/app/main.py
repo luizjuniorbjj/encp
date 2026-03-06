@@ -4,19 +4,35 @@ FastAPI backend for AI tile/remodel contractor assistant
 Single company — NO multi-tenant
 """
 
+import logging
+import os
+import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 
 from app.config import (
     APP_NAME, APP_VERSION, DEBUG, MAINTENANCE_MODE,
     CORS_ORIGINS, CORS_ALLOW_CREDENTIALS, CORS_ALLOW_METHODS, CORS_ALLOW_HEADERS,
     PRODUCTION_ORIGINS, ADMIN_PANEL_PATH
 )
-from app.database import init_db, close_db
+
+# ============================================
+# SENTRY (error monitoring)
+# ============================================
+SENTRY_DSN = os.getenv("SENTRY_DSN", "")
+if SENTRY_DSN:
+    import sentry_sdk
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        traces_sample_rate=0.1,
+        environment="production" if not DEBUG else "development",
+        release=f"{APP_NAME}@{APP_VERSION}",
+    )
+from app.database import init_db, close_db, _pool
 from app.auth import router as auth_router
 from app.routes.chat import router as chat_router
 from app.routes.profile import router as profile_router
@@ -31,6 +47,26 @@ from app.routes.export import router as export_router
 from app.routes.marketing import router as marketing_router
 from app.routes.blog import router as blog_router
 
+logger = logging.getLogger("encp")
+
+
+# ============================================
+# LOGGING SETUP
+# ============================================
+
+def setup_logging():
+    """Configure structured logging for the application"""
+    log_level = logging.DEBUG if DEBUG else logging.INFO
+    log_format = "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
+    logging.basicConfig(level=log_level, format=log_format, force=True)
+    # Quiet noisy libraries
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("httpcore").setLevel(logging.WARNING)
+    logging.getLogger("watchfiles").setLevel(logging.WARNING)
+
+
+setup_logging()
+
 
 # ============================================
 # LIFECYCLE
@@ -40,21 +76,26 @@ from app.routes.blog import router as blog_router
 async def lifespan(app: FastAPI):
     """Manage startup and shutdown"""
     # Startup
-    print(f"\n  {APP_NAME} v{APP_VERSION}")
-    print("=" * 40)
-    print("[CRYPTO] Encryption key configured via environment")
+    logger.info("%s v%s starting", APP_NAME, APP_VERSION)
+    logger.info("Encryption key configured via environment")
 
     try:
         await init_db()
-        print("[DB] Database connected")
+        logger.info("Database connected")
     except Exception as e:
-        print(f"[WARN] Database not available: {e}")
-        print("[WARN] Running without database - some features disabled")
+        logger.warning("Database not available: %s", e)
+        logger.warning("Running without database - some features disabled")
 
     if MAINTENANCE_MODE:
-        print("[WARN] MAINTENANCE MODE ACTIVE")
-    print("[OK] API ready")
-    print("=" * 40)
+        logger.warning("MAINTENANCE MODE ACTIVE")
+
+    # Start blog scheduler
+    import asyncio
+    from app.blog.scheduler import blog_scheduler_loop
+    asyncio.create_task(blog_scheduler_loop())
+    logger.info("Blog scheduler started")
+
+    logger.info("API ready")
 
     yield
 
@@ -63,7 +104,7 @@ async def lifespan(app: FastAPI):
         await close_db()
     except Exception:
         pass
-    print(f"\n[SHUTDOWN] {APP_NAME} stopped\n")
+    logger.info("%s stopped", APP_NAME)
 
 
 # ============================================
@@ -143,7 +184,25 @@ async def api_status():
 
 @app.get("/health", tags=["Status"])
 async def health():
-    return {"status": "healthy"}
+    """Detailed health check with DB status"""
+    db_ok = False
+    try:
+        if _pool:
+            async with _pool.acquire() as conn:
+                await conn.fetchval("SELECT 1")
+            db_ok = True
+    except Exception:
+        pass
+
+    status = "healthy" if db_ok else "degraded"
+    return JSONResponse(
+        status_code=200 if db_ok else 503,
+        content={
+            "status": status,
+            "version": APP_VERSION,
+            "database": "connected" if db_ok else "unavailable",
+        }
+    )
 
 
 # Register routers
@@ -197,6 +256,135 @@ async def serve_chat():
     if chat.exists():
         return FileResponse(chat)
     return {"message": "Chat not available"}
+
+
+@app.get("/blog", tags=["Frontend"])
+@app.get("/blog/", tags=["Frontend"])
+async def serve_blog_listing():
+    """Serve blog listing page"""
+    blog_page = FRONTEND_DIR / "blog.html"
+    if blog_page.exists():
+        return FileResponse(blog_page)
+    return {"message": "Blog page not available"}
+
+
+@app.get("/blog/{slug}", tags=["Frontend"])
+@app.get("/blog/{slug}/", tags=["Frontend"])
+async def serve_blog_post(slug: str):
+    """Serve individual blog post as HTML with JSON-LD structured data"""
+    from app.blog.service import get_post
+    from fastapi.responses import HTMLResponse
+
+    post = await get_post(slug)
+    if not post or post['status'] != 'published':
+        return HTMLResponse(status_code=404, content="<h1>Post not found</h1>")
+
+    html = _render_blog_post(post)
+    return HTMLResponse(content=html)
+
+
+@app.get("/sitemap.xml", tags=["SEO"])
+async def sitemap_xml():
+    """Dynamic sitemap.xml for blog posts"""
+    from app.blog.service import get_published_posts_for_sitemap
+    from fastapi.responses import Response
+
+    posts = await get_published_posts_for_sitemap()
+    base = "https://encpservices.com"
+
+    urls = [f"""  <url>
+    <loc>{base}/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>""",
+    f"""  <url>
+    <loc>{base}/blog/</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>"""]
+
+    for p in posts:
+        lastmod = (p.get('updated_at') or p.get('published_at'))
+        lastmod_str = lastmod.strftime('%Y-%m-%d') if lastmod else ''
+        urls.append(f"""  <url>
+    <loc>{base}/blog/{p['slug']}/</loc>
+    <lastmod>{lastmod_str}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>""")
+
+    xml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+{chr(10).join(urls)}
+</urlset>"""
+    return Response(content=xml, media_type="application/xml")
+
+
+def _render_blog_post(post: dict) -> str:
+    """Render blog post as full HTML page with JSON-LD structured data"""
+    import json as _json
+    import html as _html
+
+    title = _html.escape(post['title'])
+    meta_desc = _html.escape(post.get('meta_description', ''))
+    content = post['content']
+    category = post.get('category', '')
+    city = post.get('city', '')
+    tags = post.get('tags', []) or []
+    slug = post['slug']
+    views = post.get('views', 0)
+    published_at = post.get('published_at')
+    published_str = published_at.strftime('%B %d, %Y') if published_at else ''
+    published_iso = published_at.isoformat() if published_at else ''
+    base_url = "https://encpservices.com"
+    canonical = f"{base_url}/blog/{slug}/"
+
+    # JSON-LD structured data
+    json_ld = _json.dumps({
+        "@context": "https://schema.org",
+        "@type": "Article",
+        "headline": post['title'],
+        "description": post.get('meta_description', ''),
+        "url": canonical,
+        "datePublished": published_iso,
+        "author": {
+            "@type": "Organization",
+            "name": "ENCP Services Group",
+            "url": base_url,
+            "telephone": "+1-561-506-7035"
+        },
+        "publisher": {
+            "@type": "Organization",
+            "name": "ENCP Services Group",
+            "logo": {
+                "@type": "ImageObject",
+                "url": f"{base_url}/assets/logo/encp-logo-horizontal.png"
+            }
+        },
+        "mainEntityOfPage": canonical,
+        "articleSection": category,
+        "keywords": ", ".join(tags) if tags else ""
+    }, indent=2)
+
+    tags_html = "".join(f'<span class="tag">{_html.escape(t)}</span>' for t in tags)
+    city_span = f'<span>{_html.escape(city)}</span>' if city else ''
+
+    template_path = FRONTEND_DIR / "blog-post.html"
+    template = template_path.read_text(encoding="utf-8")
+
+    html = template.replace("{{TITLE}}", title)
+    html = html.replace("{{META_DESCRIPTION}}", meta_desc)
+    html = html.replace("{{CANONICAL_URL}}", canonical)
+    html = html.replace("{{PUBLISHED_AT}}", published_iso)
+    html = html.replace("{{CATEGORY}}", _html.escape(category.title()) if category else "General")
+    html = html.replace("{{DATE}}", published_str)
+    html = html.replace("{{CITY_SPAN}}", city_span)
+    html = html.replace("{{VIEWS}}", str(views))
+    html = html.replace("{{CONTENT}}", content)
+    html = html.replace("{{TAGS_HTML}}", tags_html)
+    html = html.replace("{{JSON_LD}}", json_ld)
+
+    return html
 
 
 @app.get(ADMIN_PANEL_PATH, include_in_schema=False)

@@ -4,11 +4,14 @@ Login/Register + OAuth (Google) — Single company (NO multi-tenant)
 Forked from SegurIA, removed agency_id/agency_slug
 """
 
+import logging
 from datetime import datetime, timedelta
 from typing import Optional
 from urllib.parse import urlencode
 import secrets
 import httpx
+
+logger = logging.getLogger("encp.auth")
 
 from fastapi import APIRouter, HTTPException, Depends, Header, Query
 from fastapi.responses import RedirectResponse
@@ -30,13 +33,72 @@ from app.config import (
     RESEND_API_KEY,
     EMAIL_FROM,
     APP_URL,
-    APP_NAME
+    APP_NAME,
+    REDIS_URL
 )
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
-# Store OAuth states temporarily (in production, use Redis)
-oauth_states = {}
+
+# ============================================
+# OAUTH STATE STORE (Redis or in-memory fallback)
+# ============================================
+
+class OAuthStateStore:
+    """Stores OAuth state tokens. Uses Redis when available, else in-memory dict."""
+
+    def __init__(self):
+        self._memory = {}
+        self._redis = None
+        self._initialized = False
+
+    def _init(self):
+        if self._initialized:
+            return
+        self._initialized = True
+        if REDIS_URL:
+            try:
+                import redis
+                self._redis = redis.from_url(REDIS_URL, decode_responses=True)
+                self._redis.ping()
+                logger.info("OAuth state store using Redis")
+            except Exception as e:
+                self._redis = None
+                logger.warning("OAuth state store falling back to memory: %s", e)
+
+    def set(self, state: str, data: dict, ttl_seconds: int = 600):
+        self._init()
+        if self._redis:
+            try:
+                import json
+                self._redis.setex(f"oauth:{state}", ttl_seconds, json.dumps(data, default=str))
+                return
+            except Exception:
+                pass
+        self._memory[state] = data
+
+    def pop(self, state: str) -> bool:
+        """Remove state and return True if it existed."""
+        self._init()
+        if self._redis:
+            try:
+                result = self._redis.delete(f"oauth:{state}")
+                return result > 0
+            except Exception:
+                pass
+        return self._memory.pop(state, None) is not None
+
+    def exists(self, state: str) -> bool:
+        self._init()
+        if self._redis:
+            try:
+                return self._redis.exists(f"oauth:{state}") > 0
+            except Exception:
+                pass
+        return state in self._memory
+
+
+oauth_states = OAuthStateStore()
 
 
 # ============================================
@@ -94,7 +156,7 @@ class UserResponse(BaseModel):
 async def _send_reset_email(email: str, token: str):
     """Send password reset email via Resend API"""
     if not RESEND_API_KEY:
-        print(f"[AUTH] RESEND_API_KEY not configured — reset token for {email}: {token[:8]}...")
+        logger.warning("RESEND_API_KEY not configured — reset token for %s: %s...", email, token[:8])
         return
 
     reset_url = f"{APP_URL}/reset-password?token={token}"
@@ -125,9 +187,9 @@ async def _send_reset_email(email: str, token: str):
                 </div>
             """
         })
-        print(f"[AUTH] Password reset email sent to {email}")
+        logger.info("Password reset email sent to %s", email)
     except Exception as e:
-        print(f"[AUTH] Failed to send reset email to {email}: {e}")
+        logger.error("Failed to send reset email to %s: %s", email, e)
 
 
 # ============================================
@@ -371,10 +433,7 @@ async def google_login():
         raise HTTPException(status_code=501, detail="Google login not configured")
 
     state = secrets.token_urlsafe(32)
-    oauth_states[state] = {
-        "provider": "google",
-        "timestamp": datetime.now()
-    }
+    oauth_states.set(state, {"provider": "google"})
 
     params = {
         "client_id": GOOGLE_CLIENT_ID,
@@ -404,10 +463,8 @@ async def google_callback(
     if not code or not state:
         return RedirectResponse(url="/?error=missing_params")
 
-    if state not in oauth_states:
+    if not oauth_states.pop(state):
         return RedirectResponse(url="/?error=invalid_state")
-
-    oauth_states.pop(state)
 
     try:
         async with httpx.AsyncClient() as client:
@@ -490,8 +547,8 @@ async def google_callback(
         redirect_url = f"/?token={jwt_access}&refresh={jwt_refresh}"
         return RedirectResponse(url=redirect_url)
 
-    except Exception as e:
-        print(f"[AUTH] Google OAuth error: {e}")
+    except (httpx.HTTPError, KeyError, ValueError) as e:
+        logger.error("Google OAuth error: %s", e)
         return RedirectResponse(url="/?error=oauth_failed")
 
 

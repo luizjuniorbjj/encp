@@ -5,6 +5,7 @@ Forked from SegurIA, adapted for tile/remodel domain
 """
 
 import json
+import logging
 from contextlib import asynccontextmanager
 from datetime import datetime, date
 from typing import Optional, List, Dict, Any
@@ -13,6 +14,8 @@ from uuid import UUID
 import asyncpg
 from app.config import DATABASE_URL
 from app.security import encrypt_data, decrypt_data
+
+logger = logging.getLogger("encp.db")
 
 
 class UUIDEncoder(json.JSONEncoder):
@@ -1233,7 +1236,7 @@ async def init_db():
         command_timeout=30
     )
     _db = Database(_pool)
-    print(f"[DB] Pool created: {DATABASE_URL.split('@')[-1] if '@' in DATABASE_URL else 'local'}")
+    logger.info("Pool created: %s", DATABASE_URL.split('@')[-1] if '@' in DATABASE_URL else 'local')
 
 
 async def close_db():

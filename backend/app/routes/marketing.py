@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 from app.auth import get_admin_user
 from app.database import get_db, Database
 from app.marketing.service import MarketingService
+from app.security import rate_limiter
 
 router = APIRouter(prefix="/marketing", tags=["Marketing"])
 
@@ -133,6 +134,8 @@ async def generate_review_response(
     db: Database = Depends(get_db)
 ):
     """Generate AI response to a customer review."""
+    if not rate_limiter.is_allowed(current_user["user_id"], max_requests=20, window_seconds=300):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded. Max 20 review responses per 5 minutes.")
     svc = MarketingService(db)
     result = await svc.generate_review_response(
         platform=body.platform,
@@ -183,6 +186,8 @@ async def generate_content(
     db: Database = Depends(get_db)
 ):
     """Generate social media content with AI."""
+    if not rate_limiter.is_allowed(current_user["user_id"], max_requests=20, window_seconds=300):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded. Max 20 content generations per 5 minutes.")
     svc = MarketingService(db)
     result = await svc.generate_content(
         content_type=body.content_type,

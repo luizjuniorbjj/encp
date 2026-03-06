@@ -21,6 +21,11 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")  # Para STT (Whisper) e TTS
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://localhost/enpcservices")
 
 # ============================================
+# REDIS
+# ============================================
+REDIS_URL = os.getenv("REDIS_URL", "")
+
+# ============================================
 # SECURITY
 # ============================================
 SECRET_KEY = os.getenv("SECRET_KEY", "encp-chave-secreta-alterar-em-producao")
