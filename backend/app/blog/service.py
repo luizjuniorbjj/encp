@@ -69,48 +69,58 @@ Return ONLY a JSON object:
     "suggested_slug": "url-friendly-slug"
 }}"""
 
-# Pre-defined topic ideas organized by category
-TOPIC_IDEAS = [
-    # Cost guides
+# ============================================
+# Auto-generate topics: 1 article per city+service (matches landing pages)
+# + podcast interviews
+# ============================================
+
+_CITIES = ['Boca Raton', 'Delray Beach', 'Fort Lauderdale', 'Pompano Beach', 'Coral Springs', 'Coconut Creek', 'Weston', 'Deerfield Beach']
+
+_SERVICES = {
+    'Tile Installation': {
+        'topic': 'Tile Installation in {city}: Costs, Tips, and What to Expect',
+        'keywords': 'tile installation {city_lower}, tile contractor {city_lower}, floor tile {city_lower}',
+        'service': 'Tile Installation',
+    },
+    'Bathroom Remodel': {
+        'topic': 'Bathroom Remodel in {city}: Ideas, Costs, and Expert Advice',
+        'keywords': 'bathroom remodel {city_lower}, bathroom renovation {city_lower}, bathroom contractor {city_lower}',
+        'service': 'Bathroom Remodel',
+    },
+    'Kitchen Remodel': {
+        'topic': 'Kitchen Remodel in {city}: Design Ideas and Cost Guide',
+        'keywords': 'kitchen remodel {city_lower}, kitchen renovation {city_lower}, kitchen contractor {city_lower}',
+        'service': 'Kitchen Remodel',
+    },
+}
+
+# Build city+service topics dynamically (24 articles)
+TOPIC_IDEAS = []
+for city in _CITIES:
+    city_lower = city.lower().replace(' ', '-')
+    for svc_name, svc_data in _SERVICES.items():
+        TOPIC_IDEAS.append({
+            "topic": svc_data['topic'].format(city=city),
+            "city": city,
+            "service": svc_data['service'],
+            "category": "guides",
+            "keywords": svc_data['keywords'].format(city_lower=city_lower),
+        })
+
+# General articles (not city-specific, broader reach)
+TOPIC_IDEAS += [
     {"topic": "How Much Does Tile Installation Cost in South Florida?", "category": "cost", "keywords": "tile installation cost florida, tile price per sqft, tile estimate"},
-    {"topic": "Bathroom Remodel Costs in Boca Raton: What to Expect in 2026", "category": "cost", "keywords": "bathroom remodel cost boca raton, bathroom renovation price, remodel estimate"},
-    {"topic": "Kitchen Remodel Costs in South Florida: A Complete Breakdown", "category": "cost", "keywords": "kitchen remodel cost florida, kitchen renovation price, kitchen estimate"},
-    {"topic": "Hardwood vs Laminate vs Tile: Cost Comparison for Florida Homes", "category": "cost", "keywords": "flooring cost comparison, hardwood vs laminate cost, tile vs wood cost"},
-
-    # Tips & How-to
-    {"topic": "How to Choose the Best Tile for Your Bathroom in South Florida", "category": "tips", "keywords": "best bathroom tile, tile selection, porcelain vs ceramic"},
-    {"topic": "10 Signs Your Bathroom Needs a Remodel", "category": "tips", "keywords": "bathroom remodel signs, when to remodel bathroom, bathroom renovation"},
     {"topic": "Porcelain vs Ceramic Tile: Which Is Better for Florida Homes?", "category": "tips", "keywords": "porcelain vs ceramic, tile types, best tile florida"},
-    {"topic": "How to Choose the Perfect Kitchen Backsplash", "category": "tips", "keywords": "kitchen backsplash ideas, backsplash tile, kitchen tile design"},
     {"topic": "Best Flooring Options for Florida's Humid Climate", "category": "tips", "keywords": "best flooring florida, humidity resistant flooring, florida floor options"},
-    {"topic": "How to Prepare Your Home for a Tile Installation Project", "category": "tips", "keywords": "prepare for tile installation, tile prep, before tile installers arrive"},
-
-    # Seasonal
-    {"topic": "Best Time to Remodel Your Bathroom in South Florida", "category": "seasonal", "keywords": "best time remodel bathroom, bathroom renovation timing, when to remodel"},
-    {"topic": "Summer Home Improvement: Tile and Flooring Projects to Boost Value", "category": "seasonal", "keywords": "summer home improvement, tile projects, home value flooring"},
-
-    # Maintenance
-    {"topic": "How to Clean and Maintain Your Tile Floors in Florida", "category": "maintenance", "keywords": "tile floor maintenance, clean tile, grout cleaning florida"},
-    {"topic": "When to Replace vs Repair Your Tile Flooring", "category": "maintenance", "keywords": "replace tile floor, repair tile, cracked tile fix"},
+    {"topic": "10 Signs Your Bathroom Needs a Remodel", "category": "tips", "keywords": "bathroom remodel signs, when to remodel bathroom, bathroom renovation"},
+    {"topic": "How to Choose the Perfect Kitchen Backsplash", "category": "tips", "keywords": "kitchen backsplash ideas, backsplash tile, kitchen tile design"},
     {"topic": "Grout Maintenance Guide: Keep Your Tile Looking New", "category": "maintenance", "keywords": "grout maintenance, grout cleaning, grout sealing"},
-
-    # Guides
-    {"topic": "The Complete Guide to Hiring a Tile Contractor in South Florida", "category": "guides", "keywords": "hire tile contractor, find tile installer, tile company near me"},
-    {"topic": "Small Bathroom Remodel Ideas That Maximize Space", "category": "guides", "keywords": "small bathroom remodel, bathroom ideas, maximize bathroom space"},
-    {"topic": "Kitchen Remodel Planning Guide: From Design to Installation", "category": "guides", "keywords": "kitchen remodel guide, kitchen planning, kitchen renovation steps"},
-    {"topic": "Waterproof Flooring Options for Your Florida Bathroom", "category": "guides", "keywords": "waterproof flooring bathroom, moisture resistant floor, bathroom flooring"},
-
-    # Trends
     {"topic": "2026 Tile Trends: Popular Styles for South Florida Homes", "category": "trends", "keywords": "tile trends 2026, popular tile styles, modern tile design"},
-    {"topic": "Large Format Tiles: The Modern Choice for Florida Homes", "category": "trends", "keywords": "large format tile, big tiles, modern tile installation"},
+    {"topic": "Hardwood vs Laminate vs Tile: Cost Comparison for Florida Homes", "category": "cost", "keywords": "flooring cost comparison, hardwood vs laminate cost, tile vs wood cost"},
+]
 
-    # City-specific
-    {"topic": "Tile Installation in Boca Raton: What Homeowners Need to Know", "city": "Boca Raton", "category": "guides", "keywords": "tile installation boca raton, tile contractor boca, floor installation boca raton"},
-    {"topic": "Bathroom Remodeling in Fort Lauderdale: Ideas and Costs", "city": "Fort Lauderdale", "category": "guides", "keywords": "bathroom remodel fort lauderdale, bathroom renovation, contractor fort lauderdale"},
-    {"topic": "Kitchen Remodel Ideas for Delray Beach Homes", "city": "Delray Beach", "category": "tips", "keywords": "kitchen remodel delray beach, kitchen renovation, tile delray beach"},
-    {"topic": "Why Coral Springs Homeowners Choose ENCP for Tile Installation", "city": "Coral Springs", "category": "tips", "keywords": "tile installation coral springs, floor installer coral springs, tile contractor"},
-
-    # Podcast-style interviews (manufacturer experts)
+# Podcast-style interviews (manufacturer experts)
+TOPIC_IDEAS += [
     {"topic": "Interview: Choosing the Right Porcelain Tile for Florida Humidity", "category": "podcast", "content_type": "podcast-interview", "keywords": "porcelain tile florida, moisture resistant tile, tile for humid climate"},
     {"topic": "Interview: Waterproof Grout Technology - What Every Homeowner Should Know", "category": "podcast", "content_type": "podcast-interview", "keywords": "waterproof grout, grout technology, grout for showers"},
     {"topic": "Interview: Large Format Tile Installation - Expert Tips from a Tile Manufacturer", "category": "podcast", "content_type": "podcast-interview", "keywords": "large format tile, big tile installation, modern tile"},
