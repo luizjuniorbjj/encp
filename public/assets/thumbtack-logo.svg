@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 36" width="160" height="36">
+  <!-- Thumbtack Icon - Blue circle with T pin -->
+  <circle cx="18" cy="18" r="17" fill="#009FD9"/>
+  <path d="M18 8 L18 20" stroke="white" stroke-width="4" stroke-linecap="round"/>
+  <path d="M12 14 L24 14" stroke="white" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="18" cy="26" r="3" fill="white"/>
+
+  <!-- Thumbtack Text -->
+  <text x="42" y="25" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="bold" fill="#2D2D2D">Thumbtack</text>
+</svg>

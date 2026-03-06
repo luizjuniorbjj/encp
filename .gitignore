@@ -16,3 +16,15 @@ nul
 
 # Claude
 .claude/
+
+# Environment / Secrets
+.env
+*.env
+backend/.env
+
+# Python
+__pycache__/
+*.pyc
+
+# Wrangler
+.wrangler/

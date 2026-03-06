@@ -1,0 +1,1634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ENCPServices - Admin</title>
+  <style>
+    /* ===== RESET & BASE ===== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --deep-blue: #1A3A5C;
+      --bright-yellow: #F5A623;
+      --white: #FFFFFF;
+      --light-gray: #F5F5F5;
+      --dark-gray: #333333;
+      --border: #E0E0E0;
+      --sidebar-w: 240px;
+      --header-h: 60px;
+      --radius: 8px;
+      --shadow: 0 2px 8px rgba(0,0,0,0.08);
+      --shadow-lg: 0 4px 16px rgba(0,0,0,0.12);
+      --transition: 0.2s ease;
+    }
+
+    html { font-size: 15px; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: var(--light-gray);
+      color: var(--dark-gray);
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+
+    a { color: var(--deep-blue); text-decoration: none; }
+    button { cursor: pointer; font-family: inherit; }
+    input, select, textarea { font-family: inherit; font-size: 0.93rem; }
+    table { border-collapse: collapse; width: 100%; }
+
+    /* ===== SCROLLBAR ===== */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #aaa; }
+
+    /* ===== LOGIN SCREEN ===== */
+    #admin-login-screen {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      background: linear-gradient(135deg, var(--deep-blue) 0%, #2a5a8c 100%);
+    }
+
+    .login-card {
+      background: var(--white);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-lg);
+      padding: 2.5rem 2rem;
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+    }
+
+    .login-card .logo-text {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: var(--deep-blue);
+      margin-bottom: 0.25rem;
+    }
+
+    .login-card .logo-text span { color: var(--bright-yellow); }
+
+    .login-card .subtitle {
+      font-size: 0.85rem;
+      color: #888;
+      margin-bottom: 1.75rem;
+    }
+
+    .login-card .form-group {
+      margin-bottom: 1rem;
+      text-align: left;
+    }
+
+    .login-card label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #666;
+      margin-bottom: 0.3rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .login-card input[type="text"],
+    .login-card input[type="password"] {
+      width: 100%;
+      padding: 0.65rem 0.85rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.95rem;
+      transition: border var(--transition);
+    }
+
+    .login-card input:focus {
+      outline: none;
+      border-color: var(--deep-blue);
+      box-shadow: 0 0 0 3px rgba(26,58,92,0.1);
+    }
+
+    .login-card .login-error {
+      display: none;
+      color: #D32F2F;
+      font-size: 0.82rem;
+      margin-bottom: 0.75rem;
+      padding: 0.5rem;
+      background: #FFEBEE;
+      border-radius: 4px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      padding: 0.6rem 1.25rem;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      transition: all var(--transition);
+    }
+
+    .btn-primary {
+      background: var(--deep-blue);
+      color: var(--white);
+    }
+
+    .btn-primary:hover { background: #244d73; }
+
+    .btn-yellow {
+      background: var(--bright-yellow);
+      color: var(--deep-blue);
+    }
+
+    .btn-yellow:hover { background: #e6961c; }
+
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--dark-gray);
+    }
+
+    .btn-outline:hover { background: var(--light-gray); }
+
+    .btn-sm { padding: 0.35rem 0.75rem; font-size: 0.8rem; }
+
+    .btn-block { width: 100%; }
+
+    /* ===== ADMIN LAYOUT ===== */
+    #admin-container {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* ===== SIDEBAR ===== */
+    #sidebar {
+      width: var(--sidebar-w);
+      background: var(--deep-blue);
+      color: var(--white);
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      z-index: 100;
+      transition: transform 0.3s ease;
+    }
+
+    .sidebar-header {
+      padding: 1.25rem 1.25rem 1rem;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .sidebar-header .brand {
+      font-size: 1.15rem;
+      font-weight: 700;
+    }
+
+    .sidebar-header .brand span { color: var(--bright-yellow); }
+
+    .sidebar-header .admin-tag {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: rgba(255,255,255,0.5);
+      margin-top: 0.15rem;
+    }
+
+    .sidebar-nav {
+      flex: 1;
+      padding: 0.75rem 0;
+      overflow-y: auto;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.7rem 1.25rem;
+      color: rgba(255,255,255,0.7);
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all var(--transition);
+      border-left: 3px solid transparent;
+    }
+
+    .nav-item:hover {
+      background: rgba(255,255,255,0.08);
+      color: var(--white);
+    }
+
+    .nav-item.active {
+      background: rgba(255,255,255,0.12);
+      color: var(--white);
+      border-left-color: var(--bright-yellow);
+    }
+
+    .nav-item svg {
+      width: 20px;
+      height: 20px;
+      flex-shrink: 0;
+    }
+
+    .sidebar-footer {
+      padding: 1rem 1.25rem;
+      border-top: 1px solid rgba(255,255,255,0.1);
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-size: 0.82rem;
+    }
+
+    .sidebar-footer .user-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--bright-yellow);
+      color: var(--deep-blue);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.8rem;
+      flex-shrink: 0;
+    }
+
+    .sidebar-footer .user-info { flex: 1; min-width: 0; }
+    .sidebar-footer .user-name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sidebar-footer .user-role { color: rgba(255,255,255,0.5); font-size: 0.72rem; }
+
+    .sidebar-footer .logout-btn {
+      background: none;
+      border: none;
+      color: rgba(255,255,255,0.5);
+      padding: 4px;
+      transition: color var(--transition);
+    }
+
+    .sidebar-footer .logout-btn:hover { color: #FF6B6B; }
+
+    /* ===== MOBILE SIDEBAR ===== */
+    #sidebar-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 99;
+    }
+
+    #mobile-menu-btn {
+      display: none;
+      position: fixed;
+      top: 12px;
+      left: 12px;
+      z-index: 101;
+      background: var(--deep-blue);
+      color: var(--white);
+      border: none;
+      border-radius: 6px;
+      padding: 8px 10px;
+    }
+
+    /* ===== MAIN CONTENT ===== */
+    #content {
+      flex: 1;
+      margin-left: var(--sidebar-w);
+      padding: 1.5rem 2rem;
+      min-height: 100vh;
+    }
+
+    .view-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+
+    .view-header h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--deep-blue);
+    }
+
+    /* ===== CARDS ===== */
+    .card {
+      background: var(--white);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 1.25rem;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+    }
+
+    .card-header h3 {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--deep-blue);
+    }
+
+    /* ===== STAT CARDS ===== */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .stat-card {
+      background: var(--white);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 1.25rem;
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+
+    .stat-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .stat-icon svg { width: 22px; height: 22px; }
+    .stat-icon.blue { background: #E8F0FE; color: var(--deep-blue); }
+    .stat-icon.yellow { background: #FEF3E0; color: #E8960F; }
+    .stat-icon.green { background: #E6F7ED; color: #1B8A4E; }
+    .stat-icon.purple { background: #F0E6FF; color: #7C3AED; }
+
+    .stat-info h4 { font-size: 0.78rem; color: #888; font-weight: 500; text-transform: uppercase; letter-spacing: 0.3px; }
+    .stat-info .stat-value { font-size: 1.75rem; font-weight: 700; color: var(--deep-blue); line-height: 1.2; margin-top: 0.15rem; }
+    .stat-info .stat-change { font-size: 0.75rem; margin-top: 0.2rem; }
+    .stat-change.up { color: #1B8A4E; }
+    .stat-change.down { color: #D32F2F; }
+
+    /* ===== DASHBOARD GRID ===== */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.25rem;
+    }
+
+    /* ===== TABLES ===== */
+    .table-wrapper {
+      overflow-x: auto;
+    }
+
+    table th {
+      text-align: left;
+      padding: 0.7rem 0.85rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      color: #888;
+      background: var(--light-gray);
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    table td {
+      padding: 0.7rem 0.85rem;
+      font-size: 0.88rem;
+      border-bottom: 1px solid #f0f0f0;
+      vertical-align: middle;
+    }
+
+    table tbody tr { transition: background var(--transition); }
+    table tbody tr:hover { background: #FAFBFC; }
+    table tbody tr.clickable { cursor: pointer; }
+
+    /* ===== STATUS BADGES ===== */
+    .badge {
+      display: inline-block;
+      padding: 0.2rem 0.6rem;
+      border-radius: 20px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: capitalize;
+      white-space: nowrap;
+    }
+
+    .badge-new { background: #E8F0FE; color: #1A3A5C; }
+    .badge-contacted { background: #FEF3E0; color: #9A6B10; }
+    .badge-estimate_scheduled, .badge-estimate-scheduled { background: #FFF3E0; color: #E65100; }
+    .badge-estimate_given, .badge-estimate-given { background: #F3E8FF; color: #7C3AED; }
+    .badge-accepted { background: #E6F7ED; color: #1B8A4E; }
+    .badge-in_progress, .badge-in-progress { background: #E0F2F1; color: #00796B; }
+    .badge-completed { background: #C8E6C9; color: #2E7D32; }
+    .badge-closed_lost, .badge-closed-lost { background: #FFEBEE; color: #C62828; }
+
+    .badge-draft { background: #ECEFF1; color: #546E7A; }
+    .badge-sent { background: #E8F0FE; color: #1A3A5C; }
+    .badge-rejected { background: #FFEBEE; color: #C62828; }
+    .badge-expired { background: #FFF8E1; color: #F57F17; }
+
+    /* ===== FILTER BAR ===== */
+    .filter-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 1.25rem;
+      flex-wrap: wrap;
+    }
+
+    .filter-bar select,
+    .filter-bar input[type="date"],
+    .filter-bar input[type="text"],
+    .filter-bar input[type="search"] {
+      padding: 0.5rem 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--white);
+      font-size: 0.85rem;
+      color: var(--dark-gray);
+      min-width: 140px;
+    }
+
+    .filter-bar select:focus,
+    .filter-bar input:focus {
+      outline: none;
+      border-color: var(--deep-blue);
+      box-shadow: 0 0 0 3px rgba(26,58,92,0.1);
+    }
+
+    /* ===== LEAD DETAIL PANEL ===== */
+    .lead-detail-panel {
+      display: none;
+      background: var(--white);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-lg);
+      padding: 1.5rem;
+      margin-top: 1rem;
+      border-left: 4px solid var(--bright-yellow);
+    }
+
+    .lead-detail-panel.open { display: block; }
+
+    .lead-detail-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+    }
+
+    .lead-detail-header h3 { font-size: 1.1rem; color: var(--deep-blue); }
+
+    .lead-detail-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 1rem;
+    }
+
+    .detail-field label {
+      display: block;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      color: #888;
+      margin-bottom: 0.2rem;
+      font-weight: 600;
+    }
+
+    .detail-field p { font-size: 0.9rem; color: var(--dark-gray); }
+
+    /* ===== PROJECT CARDS ===== */
+    .projects-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: 1.25rem;
+    }
+
+    .project-card {
+      background: var(--white);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 1.25rem;
+      transition: box-shadow var(--transition);
+    }
+
+    .project-card:hover { box-shadow: var(--shadow-lg); }
+
+    .project-card .project-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 0.75rem;
+    }
+
+    .project-card .client-name { font-weight: 700; color: var(--deep-blue); font-size: 1rem; }
+    .project-card .service-type { font-size: 0.82rem; color: #888; margin-top: 0.15rem; }
+
+    .project-card .project-meta {
+      display: flex;
+      gap: 1.25rem;
+      font-size: 0.8rem;
+      color: #888;
+      margin-bottom: 0.85rem;
+    }
+
+    .project-card .project-meta span { display: flex; align-items: center; gap: 0.3rem; }
+
+    /* Stage progress bar */
+    .stage-bar {
+      display: flex;
+      gap: 3px;
+      margin-bottom: 0.5rem;
+    }
+
+    .stage-bar .stage {
+      flex: 1;
+      height: 6px;
+      border-radius: 3px;
+      background: #E8E8E8;
+      position: relative;
+    }
+
+    .stage-bar .stage.done { background: #4CAF50; }
+    .stage-bar .stage.active { background: var(--bright-yellow); animation: stagePulse 2s ease infinite; }
+
+    @keyframes stagePulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+
+    .stage-labels {
+      display: flex;
+      gap: 3px;
+      margin-bottom: 0.5rem;
+    }
+
+    .stage-labels span {
+      flex: 1;
+      font-size: 0.62rem;
+      text-align: center;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      color: #aaa;
+      font-weight: 600;
+    }
+
+    .stage-labels span.active-label { color: var(--deep-blue); font-weight: 700; }
+
+    .project-card .crew-info {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.8rem;
+      color: #666;
+      margin-top: 0.75rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid #f0f0f0;
+    }
+
+    .crew-avatar {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: var(--deep-blue);
+      color: var(--white);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.65rem;
+      font-weight: 700;
+      margin-right: -8px;
+      border: 2px solid var(--white);
+    }
+
+    .crew-avatar:last-of-type { margin-right: 0.5rem; }
+
+    /* ===== CONVERSATIONS VIEW ===== */
+    .conversations-layout {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 0;
+      background: var(--white);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      height: calc(100vh - 140px);
+    }
+
+    .convo-list {
+      border-right: 1px solid var(--border);
+      overflow-y: auto;
+    }
+
+    .convo-list-header {
+      padding: 1rem;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      background: var(--white);
+      z-index: 1;
+    }
+
+    .convo-list-header input {
+      width: 100%;
+      padding: 0.5rem 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.85rem;
+    }
+
+    .convo-item {
+      display: flex;
+      gap: 0.75rem;
+      padding: 0.85rem 1rem;
+      border-bottom: 1px solid #f5f5f5;
+      cursor: pointer;
+      transition: background var(--transition);
+    }
+
+    .convo-item:hover { background: #FAFBFC; }
+    .convo-item.active { background: #EDF2FF; }
+
+    .convo-item .convo-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--deep-blue);
+      color: var(--white);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.85rem;
+      flex-shrink: 0;
+    }
+
+    .convo-item .convo-info { flex: 1; min-width: 0; }
+    .convo-item .convo-name { font-weight: 600; font-size: 0.88rem; color: var(--deep-blue); }
+    .convo-item .convo-preview { font-size: 0.78rem; color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 0.15rem; }
+    .convo-item .convo-time { font-size: 0.68rem; color: #aaa; white-space: nowrap; flex-shrink: 0; }
+
+    .convo-unread {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--bright-yellow);
+      display: inline-block;
+      margin-left: 0.3rem;
+    }
+
+    /* Message thread */
+    .convo-thread {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    .convo-thread-header {
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      background: var(--white);
+    }
+
+    .convo-thread-header .thread-name { font-weight: 700; font-size: 1rem; color: var(--deep-blue); }
+    .convo-thread-header .thread-phone { font-size: 0.8rem; color: #888; }
+
+    .convo-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+      background: #F0F2F5;
+    }
+
+    .message-bubble {
+      max-width: 65%;
+      padding: 0.6rem 0.85rem;
+      border-radius: 12px;
+      font-size: 0.88rem;
+      line-height: 1.45;
+      position: relative;
+    }
+
+    .message-bubble .msg-time {
+      font-size: 0.65rem;
+      color: #999;
+      margin-top: 0.25rem;
+      text-align: right;
+    }
+
+    .message-bubble.incoming {
+      background: var(--white);
+      align-self: flex-start;
+      border-bottom-left-radius: 4px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+    }
+
+    .message-bubble.outgoing {
+      background: #DCF8C6;
+      align-self: flex-end;
+      border-bottom-right-radius: 4px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+    }
+
+    .convo-empty {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #aaa;
+      font-size: 0.95rem;
+    }
+
+    /* ===== SEARCH VIEW ===== */
+    .search-input-wrapper {
+      position: relative;
+      max-width: 500px;
+      margin-bottom: 1.5rem;
+    }
+
+    .search-input-wrapper input {
+      width: 100%;
+      padding: 0.75rem 1rem 0.75rem 2.75rem;
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 1rem;
+      transition: border var(--transition);
+    }
+
+    .search-input-wrapper input:focus {
+      outline: none;
+      border-color: var(--deep-blue);
+    }
+
+    .search-input-wrapper .search-icon-input {
+      position: absolute;
+      left: 0.85rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #aaa;
+    }
+
+    /* ===== EMPTY STATES ===== */
+    .empty-state {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: #aaa;
+    }
+
+    .empty-state svg { margin-bottom: 1rem; opacity: 0.4; }
+    .empty-state p { font-size: 0.95rem; }
+
+    /* ===== MODAL ===== */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-overlay.open { display: flex; }
+
+    .modal {
+      background: var(--white);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-lg);
+      width: 100%;
+      max-width: 520px;
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 1.5rem;
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.25rem;
+    }
+
+    .modal-header h2 { font-size: 1.15rem; color: var(--deep-blue); }
+
+    .modal-close {
+      background: none;
+      border: none;
+      color: #888;
+      font-size: 1.5rem;
+      line-height: 1;
+      padding: 0;
+    }
+
+    .form-group { margin-bottom: 1rem; }
+
+    .form-group label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #666;
+      margin-bottom: 0.3rem;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      width: 100%;
+      padding: 0.55rem 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.9rem;
+    }
+
+    .form-group textarea { resize: vertical; min-height: 80px; }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 1024px) {
+      .dashboard-grid { grid-template-columns: 1fr; }
+      .lead-detail-grid { grid-template-columns: 1fr 1fr; }
+    }
+
+    @media (max-width: 768px) {
+      #sidebar {
+        transform: translateX(-100%);
+      }
+
+      #sidebar.open {
+        transform: translateX(0);
+      }
+
+      #sidebar-overlay.show { display: block; }
+
+      #mobile-menu-btn { display: block; }
+
+      #content {
+        margin-left: 0;
+        padding: 1rem;
+        padding-top: calc(var(--header-h) + 0.5rem);
+      }
+
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+      .projects-grid { grid-template-columns: 1fr; }
+      .lead-detail-grid { grid-template-columns: 1fr; }
+
+      .conversations-layout {
+        grid-template-columns: 1fr;
+        height: auto;
+      }
+
+      .convo-list { max-height: 300px; }
+
+      .filter-bar { flex-direction: column; align-items: stretch; }
+      .filter-bar select,
+      .filter-bar input { min-width: unset; }
+    }
+
+    @media (max-width: 480px) {
+      .stats-grid { grid-template-columns: 1fr; }
+      .form-row { grid-template-columns: 1fr; }
+    }
+
+    /* ===== UTILITY ===== */
+    .text-muted { color: #888; }
+    .text-small { font-size: 0.8rem; }
+    .mt-1 { margin-top: 1rem; }
+    .mb-1 { margin-bottom: 1rem; }
+    .flex-between { display: flex; align-items: center; justify-content: space-between; }
+    .hidden { display: none !important; }
+
+    /* Loading spinner */
+    .spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid var(--border);
+      border-top-color: var(--deep-blue);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 2rem auto;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Toast notifications */
+    #toast-container {
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      z-index: 300;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .toast {
+      background: var(--white);
+      border-radius: 6px;
+      box-shadow: var(--shadow-lg);
+      padding: 0.75rem 1rem;
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      min-width: 280px;
+      animation: toastIn 0.3s ease;
+      border-left: 4px solid var(--deep-blue);
+    }
+
+    .toast.success { border-left-color: #4CAF50; }
+    .toast.error { border-left-color: #D32F2F; }
+    .toast.warning { border-left-color: var(--bright-yellow); }
+
+    @keyframes toastIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+
+    <!-- ==================== LOGIN SCREEN ==================== -->
+    <div id="admin-login-screen">
+      <div class="login-card">
+        <div class="logo-text">ENCP<span>Services</span></div>
+        <div class="subtitle">Admin Dashboard</div>
+
+        <div id="admin-login-error" class="login-error"></div>
+
+        <form id="admin-login-form" autocomplete="off">
+          <div class="form-group">
+            <label for="admin-email">Email</label>
+            <input type="text" id="admin-email" name="email" placeholder="Enter your email" required autocomplete="email">
+          </div>
+          <div class="form-group">
+            <label for="admin-password">Password</label>
+            <input type="password" id="admin-password" name="password" placeholder="Enter your password" required autocomplete="current-password">
+          </div>
+          <button type="submit" class="btn btn-primary btn-block" id="login-btn">Sign In</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- ==================== ADMIN SCREEN ==================== -->
+    <div id="admin-container" style="display:none">
+
+      <!-- Mobile menu button -->
+      <button id="mobile-menu-btn" aria-label="Toggle menu">
+        <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+
+      <!-- Sidebar overlay (mobile) -->
+      <div id="sidebar-overlay"></div>
+
+      <!-- ===== SIDEBAR ===== -->
+      <nav id="sidebar">
+        <div class="sidebar-header">
+          <div class="brand">ENCP<span>Services</span></div>
+          <div class="admin-tag">Admin Panel</div>
+        </div>
+
+        <div class="sidebar-nav">
+          <div class="nav-item active" data-view="dashboard">
+            <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            <span>Dashboard</span>
+          </div>
+          <div class="nav-item" data-view="leads">
+            <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            <span>Leads</span>
+          </div>
+          <div class="nav-item" data-view="estimates">
+            <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="12" y2="14"/><line x1="8" y1="18" x2="10" y2="18"/></svg>
+            <span>Estimates</span>
+          </div>
+          <div class="nav-item" data-view="projects">
+            <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>
+            <span>Projects</span>
+          </div>
+          <div class="nav-item" data-view="conversations">
+            <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+            <span>Conversations</span>
+          </div>
+          <div class="nav-item" data-view="search">
+            <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <span>Search</span>
+          </div>
+          <div class="nav-item" data-view="marketing">
+            <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+            <span>Marketing</span>
+          </div>
+        </div>
+
+        <div class="sidebar-footer">
+          <div class="user-avatar" id="user-avatar">A</div>
+          <div class="user-info">
+            <div class="user-name" id="user-display-name">Admin</div>
+            <div class="user-role">Administrator</div>
+          </div>
+          <button class="logout-btn" id="admin-logout-btn" title="Sign out">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          </button>
+        </div>
+      </nav>
+
+      <!-- ===== MAIN CONTENT ===== -->
+      <main id="content">
+
+        <!-- ===== DASHBOARD VIEW ===== -->
+        <section id="view-dashboard" class="admin-view">
+          <div class="view-header">
+            <h1>Dashboard</h1>
+            <span class="text-small text-muted" id="dashboard-date"></span>
+          </div>
+
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-icon blue">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4-4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+              </div>
+              <div class="stat-info">
+                <h4>Leads This Week</h4>
+                <div class="stat-value" id="stat-leads-week">--</div>
+                <div class="stat-change up" id="stat-leads-change"></div>
+              </div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-icon yellow">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+              </div>
+              <div class="stat-info">
+                <h4>Active Projects</h4>
+                <div class="stat-value" id="stat-active-projects">--</div>
+                <div class="stat-change" id="stat-projects-change"></div>
+              </div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-icon green">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+              </div>
+              <div class="stat-info">
+                <h4>Conversion Rate</h4>
+                <div class="stat-value" id="stat-conversion">--</div>
+                <div class="stat-change" id="stat-conversion-change"></div>
+              </div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-icon purple">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+              </div>
+              <div class="stat-info">
+                <h4>Conversations (30d)</h4>
+                <div class="stat-value" id="stat-conversations">--</div>
+                <div class="stat-change" id="stat-convos-change"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="dashboard-grid">
+            <div class="card">
+              <div class="card-header">
+                <h3>Recent Leads</h3>
+                <button class="btn btn-sm btn-outline" data-navigate="leads">View All</button>
+              </div>
+              <div class="table-wrapper">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Service</th>
+                      <th>Status</th>
+                      <th>Date</th>
+                    </tr>
+                  </thead>
+                  <tbody id="recent-leads-table">
+                    <tr><td colspan="4" class="text-muted text-small" style="text-align:center;padding:2rem">Loading...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <h3>Active Projects</h3>
+                <button class="btn btn-sm btn-outline" data-navigate="projects">View All</button>
+              </div>
+              <div class="table-wrapper">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Client</th>
+                      <th>Service</th>
+                      <th>Stage</th>
+                      <th>Crew</th>
+                    </tr>
+                  </thead>
+                  <tbody id="active-projects-table">
+                    <tr><td colspan="4" class="text-muted text-small" style="text-align:center;padding:2rem">Loading...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===== LEADS PIPELINE VIEW ===== -->
+        <section id="view-leads" class="admin-view" style="display:none">
+          <div class="view-header">
+            <h1>Leads Pipeline</h1>
+            <button class="btn btn-yellow" id="create-lead-btn">
+              <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              New Lead
+            </button>
+          </div>
+
+          <div class="filter-bar">
+            <select id="filter-lead-status">
+              <option value="">All Statuses</option>
+              <option value="new">New</option>
+              <option value="contacted">Contacted</option>
+              <option value="estimate_scheduled">Estimate Scheduled</option>
+              <option value="estimate_given">Estimate Given</option>
+              <option value="accepted">Accepted</option>
+              <option value="in_progress">In Progress</option>
+              <option value="completed">Completed</option>
+              <option value="closed_lost">Closed / Lost</option>
+            </select>
+            <select id="filter-lead-source">
+              <option value="">All Sources</option>
+              <option value="website">Website</option>
+              <option value="google">Google</option>
+              <option value="referral">Referral</option>
+              <option value="facebook">Facebook</option>
+              <option value="instagram">Instagram</option>
+              <option value="phone">Phone</option>
+              <option value="walk_in">Walk-in</option>
+            </select>
+            <input type="date" id="filter-lead-from" title="From date">
+            <input type="date" id="filter-lead-to" title="To date">
+            <button class="btn btn-sm btn-outline" id="btn-filter-leads">Apply</button>
+            <button class="btn btn-sm btn-outline" id="btn-clear-filters">Clear</button>
+          </div>
+
+          <div class="card">
+            <div class="table-wrapper">
+              <table id="leads-table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Phone</th>
+                    <th>Service</th>
+                    <th>Source</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="leads-table-body">
+                  <tr><td colspan="7" class="text-muted text-small" style="text-align:center;padding:2rem">Loading leads...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Lead detail panel -->
+          <div id="lead-detail-panel" class="lead-detail-panel">
+            <div class="lead-detail-header">
+              <h3 id="lead-detail-name">Lead Details</h3>
+              <button class="btn btn-sm btn-outline" id="btn-close-lead-detail">Close</button>
+            </div>
+            <div class="lead-detail-grid" id="lead-detail-content">
+              <!-- Populated by JS -->
+            </div>
+            <div style="margin-top:1rem;display:flex;gap:0.5rem">
+              <button class="btn btn-sm btn-primary" id="btn-edit-lead">Edit</button>
+              <button class="btn btn-sm btn-outline" id="btn-lead-history">View History</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===== ESTIMATES VIEW ===== -->
+        <section id="view-estimates" class="admin-view" style="display:none">
+          <div class="view-header">
+            <h1>Estimates</h1>
+            <button class="btn btn-yellow" id="create-estimate-btn">
+              <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              New Estimate
+            </button>
+          </div>
+
+          <div class="filter-bar">
+            <select id="filter-estimate-status">
+              <option value="">All Statuses</option>
+              <option value="draft">Draft</option>
+              <option value="sent">Sent</option>
+              <option value="accepted">Accepted</option>
+              <option value="rejected">Rejected</option>
+              <option value="expired">Expired</option>
+            </select>
+            <button class="btn btn-sm btn-outline" id="btn-filter-estimates">Apply</button>
+          </div>
+
+          <div class="card">
+            <div class="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Client</th>
+                    <th>Scope</th>
+                    <th>Cost Range</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="estimates-table-body">
+                  <tr><td colspan="6" class="text-muted text-small" style="text-align:center;padding:2rem">Loading estimates...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===== PROJECTS VIEW ===== -->
+        <section id="view-projects" class="admin-view" style="display:none">
+          <div class="view-header">
+            <h1>Projects</h1>
+            <div style="display:flex;gap:0.5rem;">
+              <select id="filter-project-stage" class="btn btn-outline btn-sm" style="font-weight:400;">
+                <option value="">All Stages</option>
+                <option value="scheduled">Scheduled</option>
+                <option value="prep">Prep</option>
+                <option value="in_progress">In Progress</option>
+                <option value="installation">Installation</option>
+                <option value="grouting">Grouting</option>
+                <option value="inspection">Inspection</option>
+                <option value="completed">Completed</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="projects-grid" id="projects-container">
+            <div class="empty-state">
+              <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>
+              <p>Loading projects...</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===== CONVERSATIONS VIEW ===== -->
+        <section id="view-conversations" class="admin-view" style="display:none">
+          <div class="view-header">
+            <h1>Conversations</h1>
+          </div>
+
+          <div class="conversations-layout">
+            <div class="convo-list">
+              <div class="convo-list-header">
+                <input type="search" id="convo-search" placeholder="Search conversations...">
+              </div>
+              <div id="convo-list-items">
+                <!-- Populated by JS -->
+              </div>
+            </div>
+
+            <div class="convo-thread" id="convo-thread">
+              <div class="convo-empty" id="convo-empty-state">
+                <div style="text-align:center">
+                  <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+                  <p style="margin-top:0.75rem">Select a conversation to view messages</p>
+                </div>
+              </div>
+
+              <div id="convo-active-thread" style="display:none;height:100%;display:none;flex-direction:column;">
+                <div class="convo-thread-header">
+                  <div class="convo-avatar" style="width:36px;height:36px;border-radius:50%;background:var(--deep-blue);color:var(--white);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.85rem;" id="thread-avatar">?</div>
+                  <div>
+                    <div class="thread-name" id="thread-client-name">Client Name</div>
+                    <div class="thread-phone" id="thread-client-phone">+1 (000) 000-0000</div>
+                  </div>
+                </div>
+                <div class="convo-messages" id="convo-messages">
+                  <!-- Populated by JS -->
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===== SEARCH VIEW ===== -->
+        <section id="view-search" class="admin-view" style="display:none">
+          <div class="view-header">
+            <h1>Search Clients</h1>
+          </div>
+
+          <div class="search-input-wrapper">
+            <svg class="search-icon-input" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="search" id="admin-search" placeholder="Search by name, phone, or email...">
+          </div>
+
+          <div class="card" id="search-results-card" style="display:none">
+            <div class="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Phone</th>
+                    <th>Email</th>
+                    <th>City</th>
+                    <th>Joined</th>
+                  </tr>
+                </thead>
+                <tbody id="search-results-body">
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div id="search-empty" class="empty-state">
+            <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <p>Enter a search term to find clients</p>
+          </div>
+        </section>
+
+        <!-- ===== MARKETING VIEW ===== -->
+        <section id="view-marketing" class="admin-view" style="display:none">
+          <div class="view-header">
+            <h1>Marketing Automation</h1>
+          </div>
+
+          <!-- Marketing tabs -->
+          <div style="display:flex;gap:0.5rem;margin-bottom:1.5rem;">
+            <button class="btn btn-primary btn-sm marketing-tab active" data-mtab="seo">SEO Monitor</button>
+            <button class="btn btn-outline btn-sm marketing-tab" data-mtab="reviews">Review Responder</button>
+            <button class="btn btn-outline btn-sm marketing-tab" data-mtab="content">Content Generator</button>
+          </div>
+
+          <!-- SEO Tab -->
+          <div id="mtab-seo" class="marketing-panel">
+            <div class="card" style="margin-bottom:1rem;">
+              <div class="card-header">
+                <h3>SEO Dashboard</h3>
+                <div style="display:flex;gap:0.5rem;">
+                  <button class="btn btn-sm btn-primary" id="btn-sync-gsc">Sync GSC</button>
+                  <button class="btn btn-sm btn-yellow" id="btn-seo-check">Run Check</button>
+                </div>
+              </div>
+              <div id="gsc-status" style="padding:0.5rem 1rem;font-size:0.85rem;color:var(--text-muted);"></div>
+              <div class="stats-grid" style="margin:1rem 0;">
+                <div class="stat-card"><div class="stat-info"><h4>Terms Tracked</h4><div class="stat-value" id="seo-total-terms">--</div></div></div>
+                <div class="stat-card"><div class="stat-info"><h4>Found in Google</h4><div class="stat-value" id="seo-terms-found">--</div></div></div>
+                <div class="stat-card"><div class="stat-info"><h4>First Page</h4><div class="stat-value" id="seo-first-page">--</div></div></div>
+                <div class="stat-card"><div class="stat-info"><h4>Total Clicks</h4><div class="stat-value" id="seo-total-clicks">--</div></div></div>
+                <div class="stat-card"><div class="stat-info"><h4>Impressions</h4><div class="stat-value" id="seo-total-impressions">--</div></div></div>
+                <div class="stat-card"><div class="stat-info"><h4>Avg Position</h4><div class="stat-value" id="seo-avg-position">--</div></div></div>
+              </div>
+            </div>
+
+            <div class="card" style="margin-bottom:1rem;">
+              <div class="card-header">
+                <h3>Add Search Term</h3>
+              </div>
+              <div style="display:flex;gap:0.5rem;padding:1rem;flex-wrap:wrap;">
+                <input type="text" id="seo-term" placeholder="e.g. tile installation" style="flex:1;min-width:150px;padding:0.5rem;border:1px solid var(--border);border-radius:var(--radius);">
+                <input type="text" id="seo-city" placeholder="e.g. Weston" style="flex:1;min-width:120px;padding:0.5rem;border:1px solid var(--border);border-radius:var(--radius);">
+                <button class="btn btn-sm btn-primary" id="btn-add-seo-term">Add Term</button>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header"><h3>Tracked Terms</h3></div>
+              <div class="table-wrapper">
+                <table>
+                  <thead><tr><th>Term</th><th>City</th><th>Position</th><th>Clicks</th><th>Impressions</th><th>CTR</th><th>Last Checked</th><th>Actions</th></tr></thead>
+                  <tbody id="seo-terms-body"><tr><td colspan="8" style="text-align:center;padding:2rem;" class="text-muted">Loading...</td></tr></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Reviews Tab -->
+          <div id="mtab-reviews" class="marketing-panel" style="display:none">
+            <div class="card" style="margin-bottom:1rem;">
+              <div class="card-header"><h3>Generate Review Response</h3></div>
+              <div style="padding:1rem;">
+                <div style="display:flex;gap:0.5rem;margin-bottom:0.75rem;flex-wrap:wrap;">
+                  <select id="review-platform" style="padding:0.5rem;border:1px solid var(--border);border-radius:var(--radius);">
+                    <option value="google">Google</option>
+                    <option value="yelp">Yelp</option>
+                    <option value="facebook">Facebook</option>
+                  </select>
+                  <input type="text" id="review-name" placeholder="Reviewer name" style="flex:1;min-width:120px;padding:0.5rem;border:1px solid var(--border);border-radius:var(--radius);">
+                  <select id="review-rating" style="padding:0.5rem;border:1px solid var(--border);border-radius:var(--radius);">
+                    <option value="5">5 Stars</option>
+                    <option value="4">4 Stars</option>
+                    <option value="3">3 Stars</option>
+                    <option value="2">2 Stars</option>
+                    <option value="1">1 Star</option>
+                  </select>
+                </div>
+                <textarea id="review-text" placeholder="Paste the customer review here..." style="width:100%;min-height:80px;padding:0.5rem;border:1px solid var(--border);border-radius:var(--radius);resize:vertical;font-family:inherit;"></textarea>
+                <button class="btn btn-primary btn-sm" id="btn-generate-review" style="margin-top:0.75rem;">Generate Response</button>
+                <div id="review-result" style="display:none;margin-top:1rem;padding:1rem;background:var(--light-gray);border-radius:var(--radius);white-space:pre-wrap;"></div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header"><h3>Generated Responses</h3></div>
+              <div class="table-wrapper">
+                <table>
+                  <thead><tr><th>Platform</th><th>Reviewer</th><th>Rating</th><th>Response</th><th>Status</th><th>Actions</th></tr></thead>
+                  <tbody id="reviews-body"><tr><td colspan="6" style="text-align:center;padding:2rem;" class="text-muted">Loading...</td></tr></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Content Tab -->
+          <div id="mtab-content" class="marketing-panel" style="display:none">
+            <div class="card" style="margin-bottom:1rem;">
+              <div class="card-header"><h3>Generate Social Post</h3></div>
+              <div style="padding:1rem;">
+                <div style="display:flex;gap:0.5rem;margin-bottom:0.75rem;flex-wrap:wrap;">
+                  <select id="content-platform" style="padding:0.5rem;border:1px solid var(--border);border-radius:var(--radius);">
+                    <option value="instagram">Instagram</option>
+                    <option value="facebook">Facebook</option>
+                    <option value="google">Google</option>
+                  </select>
+                  <input type="text" id="content-city" placeholder="City (e.g. Weston)" style="flex:1;min-width:120px;padding:0.5rem;border:1px solid var(--border);border-radius:var(--radius);">
+                  <select id="content-service" style="padding:0.5rem;border:1px solid var(--border);border-radius:var(--radius);">
+                    <option value="Floor Installation">Floor Installation</option>
+                    <option value="Tile Installation">Tile Installation</option>
+                    <option value="Bathroom Remodel">Bathroom Remodel</option>
+                    <option value="Kitchen Remodel">Kitchen Remodel</option>
+                    <option value="Backsplash">Backsplash</option>
+                    <option value="Commercial Remodeling">Commercial Remodeling</option>
+                  </select>
+                </div>
+                <button class="btn btn-primary btn-sm" id="btn-generate-content">Generate Post</button>
+                <div id="content-result" style="display:none;margin-top:1rem;padding:1rem;background:var(--light-gray);border-radius:var(--radius);white-space:pre-wrap;"></div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header"><h3>Generated Content</h3></div>
+              <div class="table-wrapper">
+                <table>
+                  <thead><tr><th>Platform</th><th>City</th><th>Service</th><th>Content</th><th>Status</th><th>Actions</th></tr></thead>
+                  <tbody id="content-body"><tr><td colspan="6" style="text-align:center;padding:2rem;" class="text-muted">Loading...</td></tr></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </main>
+    </div>
+
+    <!-- ===== NEW LEAD MODAL ===== -->
+    <div class="modal-overlay" id="modal-new-lead">
+      <div class="modal">
+        <div class="modal-header">
+          <h2>New Lead</h2>
+          <button class="modal-close" data-close-modal="modal-new-lead">&times;</button>
+        </div>
+        <form id="form-new-lead" autocomplete="off">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="lead-first-name">First Name *</label>
+              <input type="text" id="lead-first-name" required>
+            </div>
+            <div class="form-group">
+              <label for="lead-last-name">Last Name *</label>
+              <input type="text" id="lead-last-name" required>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="lead-phone">Phone *</label>
+              <input type="text" id="lead-phone" placeholder="+1 (555) 123-4567" required>
+            </div>
+            <div class="form-group">
+              <label for="lead-email">Email</label>
+              <input type="text" id="lead-email" placeholder="client@email.com">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="lead-service">Service Needed *</label>
+              <select id="lead-service" required>
+                <option value="">Select service...</option>
+                <option value="floor">Floor Installation</option>
+                <option value="tile">Tile Installation</option>
+                <option value="bathroom">Bathroom Remodel</option>
+                <option value="kitchen">Kitchen Remodel</option>
+                <option value="backsplash">Backsplash</option>
+                <option value="laminate">Laminate/Hardwood Flooring</option>
+                <option value="commercial">Commercial Remodeling</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="lead-source">Lead Source</label>
+              <select id="lead-source">
+                <option value="website">Website</option>
+                <option value="google">Google</option>
+                <option value="referral">Referral</option>
+                <option value="facebook">Facebook</option>
+                <option value="instagram">Instagram</option>
+                <option value="phone">Phone</option>
+                <option value="walk_in">Walk-in</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="lead-address">Address</label>
+            <input type="text" id="lead-address" placeholder="123 Main St, City, FL 33101">
+          </div>
+          <div class="form-group">
+            <label for="lead-notes">Notes</label>
+            <textarea id="lead-notes" placeholder="Additional details about the project..."></textarea>
+          </div>
+          <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:1rem;">
+            <button type="button" class="btn btn-outline" data-close-modal="modal-new-lead">Cancel</button>
+            <button type="submit" class="btn btn-primary">Create Lead</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- ===== NEW ESTIMATE MODAL ===== -->
+    <div class="modal-overlay" id="modal-new-estimate">
+      <div class="modal">
+        <div class="modal-header">
+          <h2>New Estimate</h2>
+          <button class="modal-close" data-close-modal="modal-new-estimate">&times;</button>
+        </div>
+        <form id="form-new-estimate" autocomplete="off">
+          <div class="form-group">
+            <label for="estimate-client">Client *</label>
+            <select id="estimate-client" required>
+              <option value="">Select client...</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="estimate-scope">Scope of Work *</label>
+            <textarea id="estimate-scope" placeholder="Describe the project scope..." required></textarea>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="estimate-cost-low">Cost Low ($) *</label>
+              <input type="number" id="estimate-cost-low" min="0" step="0.01" required>
+            </div>
+            <div class="form-group">
+              <label for="estimate-cost-high">Cost High ($) *</label>
+              <input type="number" id="estimate-cost-high" min="0" step="0.01" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="estimate-notes">Notes</label>
+            <textarea id="estimate-notes" placeholder="Additional notes..."></textarea>
+          </div>
+          <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:1rem;">
+            <button type="button" class="btn btn-outline" data-close-modal="modal-new-estimate">Cancel</button>
+            <button type="submit" class="btn btn-primary">Create Estimate</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Toast container -->
+    <div id="toast-container"></div>
+
+  </div>
+
+  <script src="/static/js/api.js"></script>
+  <script src="/static/js/admin.js"></script>
+</body>
+</html>

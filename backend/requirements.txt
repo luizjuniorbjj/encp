@@ -1,0 +1,48 @@
+# ENCP Services Group - Dependencias
+
+# Web Framework
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+
+# AI
+anthropic>=0.40.0
+openai>=1.0.0
+
+# OAuth
+httpx==0.26.0
+python-multipart==0.0.6
+
+# Database
+asyncpg==0.29.0
+
+# Validation
+pydantic==2.5.3
+email-validator==2.1.0
+
+# Security
+bcrypt==4.1.2
+python-jose[cryptography]==3.3.0
+cryptography==41.0.7
+PyJWT==2.8.0
+
+# Utilities
+python-dotenv==1.0.0
+
+# Property Lookup (free, no API key)
+homeharvest>=0.3.0
+
+# Push Notifications
+pywebpush==1.14.1
+
+# Images
+Pillow>=10.0.0
+
+# TTS
+edge-tts>=6.1.0
+
+# Email
+resend>=2.0.0
+
+# Google Search Console
+google-auth>=2.0
+google-api-python-client>=2.0
