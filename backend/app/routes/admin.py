@@ -42,6 +42,75 @@ async def get_dashboard(
 
 
 # ============================================
+# DASHBOARD CHART DATA
+# ============================================
+
+@router.get("/dashboard/charts")
+async def get_dashboard_charts(
+    current_user: dict = Depends(get_admin_user),
+    db: Database = Depends(get_db)
+):
+    """
+    Historical data for dashboard charts:
+    - leads_by_week: last 8 weeks
+    - conversations_by_day: last 14 days
+    - leads_by_status: current distribution
+    - projects_by_stage: current distribution
+    """
+    from datetime import datetime, timezone, timedelta
+
+    async with db._conn() as conn:
+        # Leads per week (last 8 weeks)
+        leads_weekly = await conn.fetch("""
+            SELECT date_trunc('week', created_at)::date AS week,
+                   COUNT(*) AS count
+            FROM leads
+            WHERE created_at >= NOW() - INTERVAL '8 weeks'
+            GROUP BY week ORDER BY week
+        """)
+
+        # Conversations per day (last 14 days)
+        convos_daily = await conn.fetch("""
+            SELECT created_at::date AS day, COUNT(*) AS count
+            FROM conversations
+            WHERE created_at >= NOW() - INTERVAL '14 days'
+            GROUP BY day ORDER BY day
+        """)
+
+        # Leads by status
+        leads_status = await conn.fetch("""
+            SELECT status, COUNT(*) AS count
+            FROM leads GROUP BY status ORDER BY count DESC
+        """)
+
+        # Projects by stage
+        projects_stage = await conn.fetch("""
+            SELECT stage, COUNT(*) AS count
+            FROM projects GROUP BY stage ORDER BY count DESC
+        """)
+
+    return {
+        "leads_by_week": [
+            {"week": str(r["week"]), "count": r["count"]}
+            for r in leads_weekly
+        ],
+        "conversations_by_day": [
+            {"day": str(r["day"]), "count": r["count"]}
+            for r in convos_daily
+        ],
+        "leads_by_status": [
+            {"status": r["status"], "count": r["count"]}
+            for r in leads_status
+        ],
+        "projects_by_stage": [
+            {"stage": r["stage"], "count": r["count"]}
+            for r in projects_stage
+        ],
+        "generated_at": _now_iso()
+    }
+
+
+# ============================================
 # ALL CLIENT CONVERSATIONS
 # ============================================
 

@@ -875,10 +875,23 @@
       gap: 1rem;
     }
 
+    .charts-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+    }
+
     /* ===== RESPONSIVE ===== */
+    @media (max-width: 1200px) {
+      .charts-row { grid-template-columns: 1fr 1fr; }
+    }
     @media (max-width: 1024px) {
       .dashboard-grid { grid-template-columns: 1fr; }
       .lead-detail-grid { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 600px) {
+      .charts-row { grid-template-columns: 1fr; }
     }
 
     @media (max-width: 768px) {
@@ -1120,6 +1133,26 @@
                 <div class="stat-value" id="stat-conversations">--</div>
                 <div class="stat-change" id="stat-convos-change"></div>
               </div>
+            </div>
+          </div>
+
+          <!-- Charts Row -->
+          <div class="charts-row">
+            <div class="card" style="padding:0.75rem">
+              <h4 style="font-size:0.8rem;color:#888;margin-bottom:0.5rem">Leads per Week</h4>
+              <div style="position:relative;height:160px"><canvas id="chart-leads-week"></canvas></div>
+            </div>
+            <div class="card" style="padding:0.75rem">
+              <h4 style="font-size:0.8rem;color:#888;margin-bottom:0.5rem">Conversations (14d)</h4>
+              <div style="position:relative;height:160px"><canvas id="chart-convos-day"></canvas></div>
+            </div>
+            <div class="card" style="padding:0.75rem">
+              <h4 style="font-size:0.8rem;color:#888;margin-bottom:0.5rem">Leads by Status</h4>
+              <div style="position:relative;height:160px"><canvas id="chart-leads-status"></canvas></div>
+            </div>
+            <div class="card" style="padding:0.75rem">
+              <h4 style="font-size:0.8rem;color:#888;margin-bottom:0.5rem">Projects by Stage</h4>
+              <div style="position:relative;height:160px"><canvas id="chart-projects-stage"></canvas></div>
             </div>
           </div>
 
@@ -1780,6 +1813,7 @@
 
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
   <script src="/static/js/api.js"></script>
   <script src="/static/js/admin.js"></script>
 </body>

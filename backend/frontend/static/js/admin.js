@@ -214,10 +214,146 @@ const Admin = {
                 this._renderActiveProjects(projects);
             } catch (e) { console.error('Active projects failed:', e); }
 
+            // Load charts
+            await this._loadCharts();
+
         } catch (err) {
             console.error('Dashboard load failed:', err);
             this._showViewError('dashboard', 'Failed to load dashboard data.');
         }
+    },
+
+    _chartInstances: {},
+
+    _destroyChart(id) {
+        if (this._chartInstances[id]) {
+            this._chartInstances[id].destroy();
+            delete this._chartInstances[id];
+        }
+    },
+
+    async _loadCharts() {
+        if (typeof Chart === 'undefined') {
+            console.warn('Chart.js not loaded, retrying in 1s...');
+            setTimeout(() => this._loadCharts(), 1000);
+            return;
+        }
+        try {
+            const data = await API.get('/admin/dashboard/charts');
+            this._renderLeadsWeekChart(data.leads_by_week || []);
+            this._renderConvosDayChart(data.conversations_by_day || []);
+            this._renderLeadsStatusChart(data.leads_by_status || []);
+            this._renderProjectsStageChart(data.projects_by_stage || []);
+        } catch (e) { console.error('Charts load failed:', e); }
+    },
+
+    _renderLeadsWeekChart(rows) {
+        const id = 'chart-leads-week';
+        this._destroyChart(id);
+        const ctx = document.getElementById(id);
+        if (!ctx) return;
+        const labels = rows.map(r => {
+            const d = new Date(r.week);
+            return (d.getMonth()+1) + '/' + d.getDate();
+        });
+        this._chartInstances[id] = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [{
+                    label: 'Leads',
+                    data: rows.map(r => r.count),
+                    backgroundColor: '#1A3A5C',
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+            }
+        });
+    },
+
+    _renderConvosDayChart(rows) {
+        const id = 'chart-convos-day';
+        this._destroyChart(id);
+        const ctx = document.getElementById(id);
+        if (!ctx) return;
+        const labels = rows.map(r => {
+            const d = new Date(r.day);
+            return (d.getMonth()+1) + '/' + d.getDate();
+        });
+        this._chartInstances[id] = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels,
+                datasets: [{
+                    label: 'Conversations',
+                    data: rows.map(r => r.count),
+                    borderColor: '#F5A623',
+                    backgroundColor: 'rgba(245,166,35,0.1)',
+                    fill: true, tension: 0.3, pointRadius: 4,
+                    pointBackgroundColor: '#F5A623'
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+            }
+        });
+    },
+
+    _renderLeadsStatusChart(rows) {
+        const id = 'chart-leads-status';
+        this._destroyChart(id);
+        const ctx = document.getElementById(id);
+        if (!ctx) return;
+        const colors = ['#1A3A5C','#F5A623','#1B8A4E','#7C3AED','#D32F2F','#0288D1','#FF6F00','#546E7A'];
+        this._chartInstances[id] = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: rows.map(r => (r.status || 'unknown').replace(/_/g,' ')),
+                datasets: [{
+                    data: rows.map(r => r.count),
+                    backgroundColor: colors.slice(0, rows.length),
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } }
+            }
+        });
+    },
+
+    _renderProjectsStageChart(rows) {
+        const id = 'chart-projects-stage';
+        this._destroyChart(id);
+        const ctx = document.getElementById(id);
+        if (!ctx) return;
+        const stageColors = {
+            prep: '#0288D1', priming: '#7C3AED', painting: '#F5A623',
+            touch_up: '#FF6F00', final_walk: '#1B8A4E', completed: '#1A3A5C',
+            scheduled: '#546E7A'
+        };
+        const colors = rows.map(r => stageColors[r.stage] || '#888');
+        this._chartInstances[id] = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: rows.map(r => (r.stage || 'unknown').replace(/_/g,' ')),
+                datasets: [{
+                    data: rows.map(r => r.count),
+                    backgroundColor: colors,
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } }
+            }
+        });
     },
 
     _setText(id, value) {
