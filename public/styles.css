@@ -652,39 +652,50 @@ a:hover {
 }
 
 .faq-list {
-    max-width: 800px;
+    max-width: 820px;
     margin: var(--space-lg) auto 0;
 }
 
 .faq-item {
-    border-bottom: 1px solid rgba(27, 54, 93, 0.12);
-    padding: var(--space-md) 0;
+    border-bottom: 1px solid rgba(27, 54, 93, 0.1);
 }
 
 .faq-item:last-child {
     border-bottom: none;
 }
 
-.faq-question {
-    display: flex;
+/* Button reset — override user-agent defaults */
+.faq-section .faq-question {
+    display: flex !important;
     justify-content: space-between;
     align-items: center;
     width: 100%;
-    background: none;
-    border: none;
+    background: transparent !important;
+    border: none !important;
     cursor: pointer;
     text-align: left;
-    padding: 0;
+    padding: var(--space-md) 0 !important;
     gap: var(--space-md);
+    font-family: inherit;
+    color: inherit;
+    appearance: none;
+    -webkit-appearance: none;
+    transition: background var(--transition);
 }
 
-.faq-question h3 {
+.faq-section .faq-question:hover {
+    background: rgba(27, 54, 93, 0.02) !important;
+}
+
+/* Override global h3 styles — need higher specificity */
+.faq-section .faq-question h3 {
     font-family: var(--font-heading);
-    font-size: clamp(1rem, 2vw, 1.125rem);
-    font-weight: 600;
+    font-size: 1.0625rem !important;
+    font-weight: 600 !important;
     color: var(--navy);
     margin: 0;
     flex: 1;
+    line-height: 1.4;
 }
 
 .faq-icon {
@@ -693,17 +704,33 @@ a:hover {
     font-weight: 300;
     line-height: 1;
     flex-shrink: 0;
-    transition: transform var(--transition);
+    width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1.5px solid rgba(212, 168, 75, 0.4);
+    border-radius: 50%;
+    transition: all var(--transition);
+}
+
+.faq-question:hover .faq-icon {
+    background: var(--gold);
+    color: var(--white);
+    border-color: var(--gold);
 }
 
 .faq-question[aria-expanded="true"] .faq-icon {
-    transform: rotate(45deg);
+    background: var(--navy);
+    color: var(--white);
+    border-color: var(--navy);
 }
 
 .faq-answer {
-    padding-top: var(--space-sm);
+    padding: 0 var(--space-md) var(--space-md) 0;
     color: var(--text-secondary);
     line-height: 1.7;
+    font-size: 0.95rem;
 }
 
 .faq-answer[hidden] {
@@ -722,6 +749,7 @@ a:hover {
 
 .faq-answer li {
     margin-bottom: var(--space-xs);
+    line-height: 1.6;
 }
 
 .faq-answer a {
@@ -732,23 +760,40 @@ a:hover {
 
 .faq-answer a:hover {
     color: var(--gold);
+    border-bottom-color: var(--navy);
 }
 
 .faq-answer small {
-    font-size: 0.85rem;
-    opacity: 0.8;
+    font-size: 0.82rem;
+    opacity: 0.75;
+    color: var(--text-secondary);
+}
+
+.faq-answer strong {
+    color: var(--navy);
+    font-weight: 600;
 }
 
 /* WCAG 2.4.7 — focus visible for accordion button */
-.faq-question:focus-visible {
+.faq-section .faq-question:focus-visible {
     outline: 3px solid var(--gold);
-    outline-offset: 4px;
+    outline-offset: 2px;
     border-radius: 4px;
 }
 
 @media (max-width: 768px) {
-    .faq-question h3 {
-        font-size: 1rem;
+    .faq-section .faq-question h3 {
+        font-size: 0.95rem !important;
+        line-height: 1.35;
+    }
+    .faq-icon {
+        width: 28px;
+        height: 28px;
+        font-size: 1.35rem;
+    }
+    .faq-section .faq-question {
+        padding: var(--space-sm) 0 !important;
+        gap: var(--space-sm);
     }
 }
 
